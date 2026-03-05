@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-- Add support for Python 3.13
+- Add support for Python 3.13 by [@gtauzin](https://github.com/gtauzin)
 
 ## [1.0.0] - 2025-08-15
 
