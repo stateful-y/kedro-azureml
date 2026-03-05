@@ -32,9 +32,9 @@ exclude_lines = [
 known_third_party = ["azure", "tabulate", "pydantic","semver","setuptools"]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.13"
+python = ">=3.9,<3.14"
 kedro = "^1.0.0"
-cloudpickle = "^2.1.0"
+cloudpickle = "^3.0.0"
 adlfs = ">=2022.2.0"
 azure-ai-ml = ">=1.2.0"
 azureml-mlflow = { version = ">=1.42.0", optional = true}
@@ -53,7 +53,7 @@ pytest = "<9"
 pytest-cov = ">=2.8.0,<8.0.0"
 tox = ">=3.25.1"
 pre-commit = "2.20.0"
-numpy = "^1.26.0"
+numpy = "^2.1.0"
 pandas = "^2.0.3"
 
 [tool.poetry.plugins] # Optional super table
