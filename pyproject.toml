@@ -32,9 +32,12 @@ exclude_lines = [
 known_third_party = ["azure", "tabulate", "pydantic","semver","setuptools"]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.13"
+python = ">=3.9,<3.14"
 kedro = "^1.0.0"
-cloudpickle = "^2.1.0"
+cloudpickle = [
+    {version = "^2.1.0", python = ">=3.9,<3.13"},
+    {version = "^3.0.0", python = ">=3.13"}
+]
 adlfs = ">=2022.2.0"
 azure-ai-ml = ">=1.2.0"
 azureml-mlflow = { version = ">=1.42.0", optional = true}
@@ -43,7 +46,10 @@ mlflow = {version = ">2.0.0,<3.0.0", optional = true}
 backoff = "^2.2.1"
 kedro-datasets = ">=1.0.0"
 
-pyarrow = ">=11.0.0"
+pyarrow = [
+    {version = ">=11.0.0,<18.0.0", python = ">=3.9,<3.13"},
+    {version = ">=18.0.0", python = ">=3.13"}
+]
 
 [tool.poetry.extras]
 mlflow = ["azureml-mlflow", "mlflow"]
@@ -53,8 +59,11 @@ pytest = "<9"
 pytest-cov = ">=2.8.0,<8.0.0"
 tox = ">=3.25.1"
 pre-commit = "2.20.0"
-numpy = "^1.26.0"
-pandas = "^2.0.3"
+numpy = [
+    {version = "^1.26.0", python = ">=3.9,<3.10"},
+    {version = "^2.1.0", python = ">=3.10"}
+]
+pandas = "^2.2.0"
 
 [tool.poetry.plugins] # Optional super table
 

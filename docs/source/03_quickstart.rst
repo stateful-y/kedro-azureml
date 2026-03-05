@@ -34,7 +34,7 @@ Project initialization
 ----------------------
 
 1. Make sure that you're logged into Azure (``az login``).
-2. Prepare new virtual environment with Python >=3.8. Install the
+2. Prepare new virtual environment with Python >=3.9. Install the
    packages
 
    .. code:: console
@@ -182,7 +182,7 @@ This option is also shown in the video-tutorial above.
 
     .. code:: console
 
-       kedro docker build --docker-args "--build-arg=BASE_IMAGE=python:3.9" --image=<image tag from conf/base/azureml.yml>
+       kedro docker build --docker-args "--build-arg=BASE_IMAGE=python:3.12" --image=<image tag from conf/base/azureml.yml>
 
 13. Once finished, login to ACR:
 
@@ -209,7 +209,7 @@ can be removed from the ``Dockerfile``.
 
         .. code-block:: dockerfile
 
-            ARG BASE_IMAGE=python:3.9
+            ARG BASE_IMAGE=python:3.12
             FROM $BASE_IMAGE
 
             # install project requirements
@@ -225,7 +225,7 @@ can be removed from the ``Dockerfile``.
 
     .. code:: console
 
-        kedro docker build --docker-args "--build-arg=BASE_IMAGE=python:3.9" --image=<acr repo name>.azurecr.io/kedro-base-image:latest
+        kedro docker build --docker-args "--build-arg=BASE_IMAGE=python:3.12" --image=<acr repo name>.azurecr.io/kedro-base-image:latest
 
 12. Login to ACR and push the image:
 
