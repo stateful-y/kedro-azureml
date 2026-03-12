@@ -219,6 +219,27 @@ def init(
     callback=_split_load_versions,
 )
 @click.option(
+    "--display-name",
+    "display_name",
+    type=str,
+    default=None,
+    help="Human-readable display name for the AzureML job, as shown in AzureML Studio.",
+)
+@click.option(
+    "--compute-name",
+    "compute_name",
+    type=str,
+    default=None,
+    help="Name of the AzureML compute cluster to use. Overrides the default cluster from config.",
+)
+@click.option(
+    "--experiment-name",
+    "experiment_name",
+    type=str,
+    default=None,
+    help="AzureML experiment name. Overrides azure.experiment_name from config.",
+)
+@click.option(
     "--on-job-scheduled",
     "on_job_scheduled",
     callback=dynamic_import_job_schedule_func_from_str,
@@ -243,6 +264,9 @@ def run(
     wait_for_completion: bool,
     env_var: Tuple[str],
     load_versions: Dict[str, str],
+    display_name: Optional[str],
+    compute_name: Optional[str],
+    experiment_name: Optional[str],
     on_job_scheduled: Optional[Callable],
 ):
     """Runs the specified pipeline in Azure ML Pipelines; Additional parameters can be passed from command line.
@@ -255,6 +279,15 @@ def run(
 
     if aml_env:
         click.echo(f"Overriding Azure ML Environment for run by: {aml_env}")
+
+    if display_name:
+        click.echo(f"Overriding AzureML job display name to: {display_name}")
+
+    if compute_name:
+        click.echo(f"Overriding AzureML compute cluster to: {compute_name}")
+
+    if experiment_name:
+        click.echo(f"Overriding AzureML experiment name to: {experiment_name}")
 
     warn_about_ignore_files()
 
@@ -277,6 +310,9 @@ def run(
             mgr.plugin_config.azure,
             wait_for_completion,
             on_job_scheduled,
+            display_name=display_name,
+            compute_name=compute_name,
+            experiment_name=experiment_name,
         )
 
         if is_ok:

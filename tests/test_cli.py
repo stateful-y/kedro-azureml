@@ -454,6 +454,64 @@ def test_can_invoke_run_with_failed_pipeline(
         ml_client.jobs.stream.assert_called_once()
 
 
+@pytest.mark.parametrize(
+    "display_name,compute_name,experiment_name",
+    [
+        ("my-display-name", None, None),
+        (None, "my-cluster", None),
+        (None, None, "my-experiment"),
+        ("my-display-name", "my-cluster", "my-experiment"),
+    ],
+    ids=("display_name", "compute_name", "experiment_name", "all_three"),
+)
+def test_can_invoke_run_with_override_params(
+    patched_kedro_package,
+    cli_context,
+    dummy_pipeline,
+    tmp_path: Path,
+    display_name: str,
+    compute_name: str,
+    experiment_name: str,
+):
+    create_kedro_conf_dirs(tmp_path)
+    with patch.dict(
+        "kedro.framework.project.pipelines", {"__default__": dummy_pipeline}
+    ), patch.object(Path, "cwd", return_value=tmp_path), patch(
+        "kedro_azureml.client.MLClient"
+    ) as ml_client_patched, patch(
+        "kedro_azureml.auth.utils.DefaultAzureCredential"
+    ), patch.dict(
+        os.environ, {"AZURE_STORAGE_ACCOUNT_KEY": "dummy_key"}
+    ):
+        runner = CliRunner()
+        args = ["-s", "subscription_id"]
+        if display_name:
+            args += ["--display-name", display_name]
+        if compute_name:
+            args += ["--compute-name", compute_name]
+        if experiment_name:
+            args += ["--experiment-name", experiment_name]
+
+        result = runner.invoke(cli.run, args, obj=cli_context)
+        assert result.exit_code == 0, result.output
+
+        ml_client = ml_client_patched.from_config()
+        ml_client.jobs.create_or_update.assert_called_once()
+
+        if display_name:
+            created_pipeline = ml_client.jobs.create_or_update.call_args[0][0]
+            assert created_pipeline.display_name == display_name
+
+        if compute_name:
+            ml_client.compute.get.assert_called_once_with(compute_name)
+        else:
+            ml_client.compute.get.assert_called_once()
+
+        if experiment_name:
+            call_kwargs = ml_client.jobs.create_or_update.call_args[1]
+            assert call_kwargs["experiment_name"] == experiment_name
+
+
 @pytest.mark.parametrize("env_var", ("INVALID", "2+2=4"))
 def test_fail_if_invalid_env_provided_in_run(
     patched_kedro_package,
