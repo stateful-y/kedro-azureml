@@ -1,10 +1,14 @@
-[tool.poetry]
+[project]
 name = "kedro-azureml"
 version = "1.0.0"
 description = "Kedro plugin with Azure ML Pipelines support"
 readme = "README.md"
-authors = ['marcin.zablocki <marcin.zablocki@getindata.com>']
-maintainers = ['GetInData MLOPS <mlops@getindata.com>']
+authors = [
+  {name = "marcin.zablocki", email = "marcin.zablocki@getindata.com"}
+]
+maintainers = [
+  {name = "GetInData MLOPS", email = "mlops@getindata.com"}
+]
 homepage = "https://github.com/getindata/kedro-azureml"
 repository = "https://github.com/getindata/kedro-azureml"
 documentation = "https://kedro-azureml.readthedocs.io/"
@@ -34,22 +38,15 @@ known_third_party = ["azure", "tabulate", "pydantic","semver","setuptools"]
 [tool.poetry.dependencies]
 python = ">=3.9,<3.14"
 kedro = "^1.0.0"
-cloudpickle = [
-    {version = "^2.1.0", python = ">=3.9,<3.13"},
-    {version = "^3.0.0", python = ">=3.13"}
-]
+cloudpickle = "^3.0.0"
 adlfs = ">=2022.2.0"
 azure-ai-ml = ">=1.2.0"
 azureml-mlflow = { version = ">=1.42.0", optional = true}
 pydantic = ">=2.6.4,<2.11.0"
-mlflow = {version = ">2.0.0,<3.0.0", optional = true}
+mlflow = {version = ">2.0.0", optional = true}
 backoff = "^2.2.1"
 kedro-datasets = ">=1.0.0"
-
-pyarrow = [
-    {version = ">=11.0.0,<18.0.0", python = ">=3.9,<3.13"},
-    {version = ">=18.0.0", python = ">=3.13"}
-]
+pyarrow = ">=18.0.0"
 
 [tool.poetry.extras]
 mlflow = ["azureml-mlflow", "mlflow"]
