@@ -91,7 +91,11 @@ class AzurePipelinesRunner(SequentialRunner):
         # Loop over remaining input datasets to add them to the catalog
         unsatisfied = pipeline.inputs() - set(updated_catalog.filter())
         for ds_name in unsatisfied:
-            updated_catalog[ds_name] = self.create_default_data_set(ds_name)
+            if ds_name in catalog:
+                # Dataset is resolvable including as a factory dataset
+                updated_catalog[ds_name] = catalog[ds_name]
+            else:
+                updated_catalog[ds_name] = self.create_default_data_set(ds_name)
 
         return super().run(
             pipeline=pipeline,

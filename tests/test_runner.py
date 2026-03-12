@@ -107,3 +107,30 @@ def test_asset_dataset_root_dir_adjustments(
         catalog,
     )
     assert catalog["input_data"].root_dir == "/random/folder"
+
+
+def test_runner_uses_factory_resolved_datasets(
+    dummy_pipeline: Pipeline, patched_azure_runner: AzurePipelinesRunner
+):
+    """Pipeline inputs resolvable from the original catalog (e.g. via a factory
+    pattern) must be taken from there rather than replaced with a stub dataset.
+
+    We simulate the factory-only scenario by patching ``catalog.filter()`` to
+    return an empty list, mimicking a freshly-loaded catalog where the factory
+    dataset has not yet been materialised into ``_datasets``.
+    """
+    from unittest.mock import patch
+
+    input_data = ["hello from factory"]
+    catalog = DataCatalog()
+    catalog["input_data"] = MemoryDataset(data=input_data)
+
+    # Simulate factory-only resolution: filter() omits input_data because it
+    # hasn't been materialised yet (exactly what happens with a catalog factory
+    # pattern before the dataset is first accessed).
+    with patch.object(catalog, "filter", return_value=[]):
+        results = patched_azure_runner.run(dummy_pipeline, catalog)
+
+    assert results["output_data"].load() == input_data, (
+        "Factory-resolved input dataset should propagate through the pipeline"
+    )

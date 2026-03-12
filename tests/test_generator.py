@@ -196,3 +196,33 @@ def test_azure_pipeline_with_deterministic_node_tag(
             assert az_pipeline.jobs[node.name].component.is_deterministic == (
                 "deterministic" in node.tags
             ), "is_deterministic property does not match node tag"
+
+
+def test_factory_resolved_pipeline_input_is_string_type(
+    dummy_pipeline, dummy_plugin_config, factory_catalog
+):
+    """A pipeline input resolved via a catalog factory pattern (not in catalog.filter())
+    must be treated as a non-AzureML string input, not as a uri_folder."""
+    pipeline_name = "unit_test_pipeline"
+    with patch.dict(
+        "kedro.framework.project.pipelines", {pipeline_name: dummy_pipeline}
+    ):
+        generator = AzureMLPipelineGenerator(
+            pipeline_name,
+            "local",
+            dummy_plugin_config,
+            {},
+            catalog=factory_catalog,
+            aml_env="unit_test/aml_env@latest",
+        )
+        # input_data is a pipeline input resolved only via factory — not in filter()
+        assert "input_data" not in factory_catalog.filter()
+        assert "input_data" in factory_catalog  # factory resolves it
+        assert generator._is_param_or_root_non_azureml_asset_dataset(
+            "input_data", dummy_pipeline
+        ), "Factory-resolved pipeline input should be treated as a non-AzureML string input"
+        from azure.ai.ml import Input
+        inp = generator._get_input("input_data", dummy_pipeline)
+        assert inp.type == "string", (
+            f"Expected 'string' input type for factory-resolved pipeline input, got '{inp.type}'"
+        )

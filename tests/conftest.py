@@ -301,3 +301,27 @@ def multi_catalog():
         version=Version(None, None),
     )
     return DataCatalog({"input_data": csv, "i2": parq})
+
+
+@pytest.fixture
+def factory_catalog():
+    """Catalog with a dataset factory pattern and an explicit AzureMLAssetDataset.
+
+    ``input_data`` resolves via the ``{name}`` factory pattern to a MemoryDataset
+    so it is NOT in ``catalog.filter()``.  ``i2`` is an explicit AzureMLAssetDataset.
+    """
+    from kedro.io.catalog_config_resolver import CatalogConfigResolver
+
+    parq = AzureMLAssetDataset(
+        dataset={
+            "type": ParquetDataset,
+            "filepath": "xyz.parq",
+        },
+        azureml_dataset="test_dataset_2",
+        version=Version(None, None),
+    )
+    resolver = CatalogConfigResolver(
+        config={"{name}": {"type": "kedro.io.MemoryDataset"}}
+    )
+    catalog = DataCatalog(datasets={"i2": parq}, config_resolver=resolver)
+    return catalog
