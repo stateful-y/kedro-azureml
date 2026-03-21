@@ -35,7 +35,7 @@ PROJECT_DIR="$WORK_DIR/spaceflights"
 # Use real registry if provided, otherwise localhost for local testing
 REGISTRY_LOGIN_SERVER="${REGISTRY_LOGIN_SERVER:-localhost:5000}"
 IMAGE_TAG="${IMAGE_TAG:-$E2E_CONFIG}"
-FULL_IMAGE_NAME="$REGISTRY_LOGIN_SERVER/kedro-azureml-e2e:$IMAGE_TAG"
+FULL_IMAGE_NAME="$REGISTRY_LOGIN_SERVER/kedro-azure-ml-e2e:$IMAGE_TAG"
 
 # Cleanup previous runs
 echo "🧹 Cleaning up previous test runs..."
@@ -45,14 +45,14 @@ rm -rf "$DIST_DIR"
 rm -rf "$PROJECT_ROOT/spaceflights"
 mkdir -p "$WORK_DIR"
 
-echo "📦 Building the kedro-azureml package..."
+echo "📦 Building the kedro-azure-ml package..."
 cd "$PROJECT_ROOT"
 poetry build -f sdist
 
 echo "🚀 Creating new Kedro project with spaceflights starter..."
 cd "$WORK_DIR"
 
-# Install kedro-azureml from built package
+# Install kedro-azure-ml from built package
 pip install "$(find "$DIST_DIR" -name "*.tar.gz")"
 
 # Create new project
@@ -62,10 +62,10 @@ echo "📋 Installing dependencies..."
 cd spaceflights
 
 # Copy the built package
-find "$DIST_DIR" -name "*.tar.gz" | xargs -I@ cp @ kedro-azureml.tar.gz
+find "$DIST_DIR" -name "*.tar.gz" | xargs -I@ cp @ kedro-azure-ml.tar.gz
 
 # Update requirements.txt
-echo -e "\n./kedro-azureml.tar.gz\n" >> requirements.txt
+echo -e "\n./kedro-azure-ml.tar.gz\n" >> requirements.txt
 echo -e "kedro-docker~=0.6.2\n" >> requirements.txt
 
 # Remove problematic dependencies for local testing
@@ -81,8 +81,8 @@ pip install -r requirements.txt
 echo "🐳 Setting up Docker configuration..."
 kedro docker init
 
-# Add kedro-azureml package to Dockerfile
-sed -i.bak 's/\(COPY requirements.txt.*\)$/\1\nCOPY kedro-azureml.tar.gz ./g' Dockerfile
+# Add kedro-azure-ml package to Dockerfile
+sed -i.bak 's/\(COPY requirements.txt.*\)$/\1\nCOPY kedro-azure-ml.tar.gz ./g' Dockerfile
 
 echo "📄 Dockerfile contents:"
 cat Dockerfile
@@ -142,14 +142,14 @@ if [[ "$AZURE_SUBSCRIPTION_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "🏃 Running on Azure ML Pipelines..."
-        kedro azureml submit -j e2e_test --once --wait-for-completion --env-var 'GETINDATA=ROCKS!'
+        kedro azureml submit -j e2e_test --once --wait-for-completion --env-var 'STATEFUL_Y=ROCKS!'
         echo "✅ Azure ML pipeline execution completed!"
     else
         echo "ℹ️  Skipping Azure ML execution as requested"
     fi
 else
     echo "🔧 Mock credentials detected, running dry-run only..."
-    kedro azureml submit -j e2e_test --dry-run --env-var 'GETINDATA=ROCKS!' || echo "⚠️  Dry-run failed (expected with mock credentials)"
+    kedro azureml submit -j e2e_test --dry-run --env-var 'STATEFUL_Y=ROCKS!' || echo "⚠️  Dry-run failed (expected with mock credentials)"
 fi
 
 echo ""

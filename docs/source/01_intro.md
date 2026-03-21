@@ -25,6 +25,6 @@ We currently support:
 * Airflow on Kubernetes [kedro-airflow-k8s](https://github.com/getindata/kedro-airflow-k8s)
 * GCP Vertex AI Pipelines [kedro-vertexai](https://github.com/getindata/kedro-vertexai)
 
-And with this **kedro-azureml** plugin, you can run your code on Azure ML Pipelines in a fully managed fashion 
+And with this **kedro-azure-ml** plugin, you can run your code on Azure ML Pipelines in a fully managed fashion 
 
 ![Azure ML Pipelines](../images/azureml_running_pipeline.gif)

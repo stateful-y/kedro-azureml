@@ -10,11 +10,11 @@ import yaml
 from click.testing import CliRunner
 from kedro.framework.startup import ProjectMetadata
 
-from kedro_azureml import cli
-from kedro_azureml.config import KedroAzureMLConfig
-from kedro_azureml.generator import AzureMLPipelineGenerator
-from kedro_azureml.runner import AzurePipelinesRunner
-from kedro_azureml.utils import CliContext
+from kedro_azure_ml import cli
+from kedro_azure_ml.config import KedroAzureMLConfig
+from kedro_azure_ml.generator import AzureMLPipelineGenerator
+from kedro_azure_ml.runner import AzurePipelinesRunner
+from kedro_azure_ml.utils import CliContext
 from tests.utils import create_kedro_conf_dirs
 
 
@@ -83,8 +83,8 @@ def test_can_compile_pipeline(
     tmp_path: Path,
     runtime_params,
 ):
-    from kedro_azureml.config import JobConfig, PipelineFilterOptions
-    from kedro_azureml.manager import KedroContextManager
+    from kedro_azure_ml.config import JobConfig, PipelineFilterOptions
+    from kedro_azure_ml.manager import KedroContextManager
 
     dummy_plugin_config.jobs = {
         "test_job": JobConfig(
@@ -136,11 +136,11 @@ def test_can_invoke_execute_cli(
     patched_azure_runner = AzurePipelinesRunner(data_paths={})
     create_kedro_conf_dirs(tmp_path)
     with patch(
-        "kedro_azureml.runner.AzurePipelinesRunner", new=patched_azure_runner
+        "kedro_azure_ml.runner.AzurePipelinesRunner", new=patched_azure_runner
     ), patch.dict(
         "kedro.framework.project.pipelines", {"__default__": dummy_pipeline}
     ), patch(
-        "kedro_azureml.manager.KedroContextManager.plugin_config",
+        "kedro_azure_ml.manager.KedroContextManager.plugin_config",
         new_callable=mock.PropertyMock,
         return_value=dummy_plugin_config,
     ), patch.object(
@@ -193,8 +193,8 @@ def test_can_invoke_submit(
     extra_env: list,
     wait_for_completion: bool,
 ):
-    from kedro_azureml.config import JobConfig, PipelineFilterOptions
-    from kedro_azureml.manager import KedroContextManager
+    from kedro_azure_ml.config import JobConfig, PipelineFilterOptions
+    from kedro_azure_ml.manager import KedroContextManager
 
     create_kedro_conf_dirs(tmp_path)
     dummy_plugin_config.jobs = {
@@ -212,11 +212,11 @@ def test_can_invoke_submit(
     with patch.dict(
         "kedro.framework.project.pipelines", {"__default__": dummy_pipeline}
     ), patch.object(Path, "cwd", return_value=tmp_path), patch(
-        "kedro_azureml.client.MLClient"
+        "kedro_azure_ml.client.MLClient"
     ) as ml_client_patched, patch(
-        "kedro_azureml.auth.utils.DefaultAzureCredential"
+        "kedro_azure_ml.auth.utils.DefaultAzureCredential"
     ) as default_credentials, patch(
-        "kedro_azureml.auth.utils.InteractiveBrowserCredential"
+        "kedro_azure_ml.auth.utils.InteractiveBrowserCredential"
     ) as interactive_credentials, patch.object(
         KedroContextManager, "__enter__", return_value=mock_mgr
     ), patch.object(
@@ -267,7 +267,7 @@ def test_can_invoke_submit(
         ].environment_variables
         # Remove MLflow env vars for assertion (tested separately)
         for key in list(populated_env_vars.keys()):
-            if key.startswith("KEDRO_AZUREML_MLFLOW_"):
+            if key.startswith("KEDRO_AZURE_ML_MLFLOW_"):
                 del populated_env_vars[key]
         expected_env = {"KEDRO_ENV": "base", **extra_env[1]}
         assert populated_env_vars == expected_env
@@ -289,8 +289,8 @@ def test_can_invoke_submit_with_on_job_scheduled(
     tmp_path: Path,
     on_job_scheduled_arg,
 ):
-    from kedro_azureml.config import JobConfig, PipelineFilterOptions
-    from kedro_azureml.manager import KedroContextManager
+    from kedro_azure_ml.config import JobConfig, PipelineFilterOptions
+    from kedro_azure_ml.manager import KedroContextManager
 
     create_kedro_conf_dirs(tmp_path)
     dummy_plugin_config.jobs = {
@@ -308,9 +308,9 @@ def test_can_invoke_submit_with_on_job_scheduled(
     with patch.dict(
         "kedro.framework.project.pipelines", {"__default__": dummy_pipeline}
     ), patch.object(Path, "cwd", return_value=tmp_path), patch(
-        "kedro_azureml.client.MLClient"
+        "kedro_azure_ml.client.MLClient"
     ), patch(
-        "kedro_azureml.auth.utils.DefaultAzureCredential"
+        "kedro_azure_ml.auth.utils.DefaultAzureCredential"
     ), patch.object(
         KedroContextManager, "__enter__", return_value=mock_mgr
     ), patch.object(
@@ -395,7 +395,7 @@ def test_submit_is_interrupted_if_used_on_empty_env(
     ), patch.object(Path, "cwd", return_value=tmp_path), patch.dict(
         os.environ, {}
     ), patch(
-        "kedro_azureml.auth.utils.DefaultAzureCredential"
+        "kedro_azure_ml.auth.utils.DefaultAzureCredential"
     ), patch(
         "click.confirm", return_value=confirm
     ) as click_confirm:
@@ -416,8 +416,8 @@ def test_can_invoke_submit_with_failed_pipeline(
     dummy_plugin_config,
     tmp_path: Path,
 ):
-    from kedro_azureml.config import JobConfig, PipelineFilterOptions
-    from kedro_azureml.manager import KedroContextManager
+    from kedro_azure_ml.config import JobConfig, PipelineFilterOptions
+    from kedro_azure_ml.manager import KedroContextManager
 
     create_kedro_conf_dirs(tmp_path)
     dummy_plugin_config.jobs = {
@@ -435,9 +435,9 @@ def test_can_invoke_submit_with_failed_pipeline(
     with patch.dict(
         "kedro.framework.project.pipelines", {"__default__": dummy_pipeline}
     ), patch.object(Path, "cwd", return_value=tmp_path), patch(
-        "kedro_azureml.client.MLClient"
+        "kedro_azure_ml.client.MLClient"
     ) as ml_client_patched, patch(
-        "kedro_azureml.auth.utils.DefaultAzureCredential"
+        "kedro_azure_ml.auth.utils.DefaultAzureCredential"
     ), patch.object(
         KedroContextManager, "__enter__", return_value=mock_mgr
     ), patch.object(
@@ -488,9 +488,9 @@ def test_fail_if_invalid_env_provided_in_submit(
     with patch.dict(
         "kedro.framework.project.pipelines", {"__default__": dummy_pipeline}
     ), patch.object(Path, "cwd", return_value=tmp_path), patch(
-        "kedro_azureml.client.MLClient"
+        "kedro_azure_ml.client.MLClient"
     ) as ml_client_patched, patch(
-        "kedro_azureml.auth.utils.DefaultAzureCredential"
+        "kedro_azure_ml.auth.utils.DefaultAzureCredential"
     ):
         ml_client = ml_client_patched.from_config()
         ml_client.jobs.stream.side_effect = ValueError()

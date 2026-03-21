@@ -7,9 +7,9 @@ from typing import Callable, Dict, List, Optional
 
 import click
 
-from kedro_azureml.generator import AzureMLPipelineGenerator
-from kedro_azureml.manager import KedroContextManager
-from kedro_azureml.utils import CliContext
+from kedro_azure_ml.generator import AzureMLPipelineGenerator
+from kedro_azure_ml.manager import KedroContextManager
+from kedro_azure_ml.utils import CliContext
 
 logger = logging.getLogger()
 
@@ -365,9 +365,9 @@ def submit_scheduled_jobs(
     :returns: ``True`` if all jobs were submitted successfully.
     :rtype: bool
     """
-    from kedro_azureml.client import AzureMLPipelinesClient, _get_azureml_client
-    from kedro_azureml.config import ScheduleConfig
-    from kedro_azureml.scheduler import (
+    from kedro_azure_ml.client import AzureMLPipelinesClient, _get_azureml_client
+    from kedro_azure_ml.config import ScheduleConfig
+    from kedro_azure_ml.scheduler import (
         AzureMLScheduleClient,
         build_job_schedule,
         build_trigger,

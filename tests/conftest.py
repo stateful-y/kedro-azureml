@@ -9,13 +9,13 @@ from kedro.io.core import Version
 from kedro.pipeline import Pipeline, node, pipeline
 from kedro_datasets.pandas import CSVDataset, ParquetDataset
 
-from kedro_azureml.config import (
+from kedro_azure_ml.config import (
     _CONFIG_TEMPLATE,
     KedroAzureMLConfig,
 )
-from kedro_azureml.datasets import AzureMLAssetDataset
-from kedro_azureml.runner import AzurePipelinesRunner
-from kedro_azureml.utils import CliContext
+from kedro_azure_ml.datasets import AzureMLAssetDataset
+from kedro_azure_ml.runner import AzurePipelinesRunner
+from kedro_azure_ml.utils import CliContext
 from tests.utils import identity
 
 
@@ -199,7 +199,7 @@ def mock_azureml_fs(simulated_azureml_dataset):
         )
 
     with patch(
-        "kedro_azureml.datasets.asset_dataset.artifact_utils.download_artifact_from_aml_uri",
+        "kedro_azure_ml.datasets.asset_dataset.artifact_utils.download_artifact_from_aml_uri",
         side_effect=mock_with_dataset,
     ):
         yield
@@ -213,7 +213,7 @@ def mock_azureml_client(request):
     mock_data_asset.type = request.param["type"]
 
     with patch(
-        "kedro_azureml.datasets.asset_dataset._get_azureml_client"
+        "kedro_azure_ml.datasets.asset_dataset._get_azureml_client"
     ) as mock_get_client:
         mock_client = MagicMock()
         mock_client.data.get.return_value = mock_data_asset

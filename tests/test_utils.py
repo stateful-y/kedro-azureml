@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import pytest
 
-from kedro_azureml.utils import update_dict
+from kedro_azure_ml.utils import update_dict
 
 
 @pytest.mark.parametrize(

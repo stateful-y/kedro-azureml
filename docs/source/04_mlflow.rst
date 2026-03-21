@@ -13,4 +13,4 @@ by the Azure ML service via environment variables.
 |Kedro AzureML MLflow integration|
 
 .. |Kedro AzureML Pipeline execution| image:: ../images/azureml_running_pipeline.gif
-.. |Kedro AzureML MLflow integration| image:: ../images/kedro-azureml-mlflow.png
+.. |Kedro AzureML MLflow integration| image:: ../images/kedro-azure-ml-mlflow.png

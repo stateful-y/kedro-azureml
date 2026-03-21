@@ -8,8 +8,8 @@ from kedro.runner import SequentialRunner
 from kedro_datasets.pickle import PickleDataset
 from pluggy import PluginManager
 
-from kedro_azureml.datasets import AzureMLPipelineDataset
-from kedro_azureml.datasets.asset_dataset import AzureMLAssetDataset
+from kedro_azure_ml.datasets import AzureMLPipelineDataset
+from kedro_azure_ml.datasets.asset_dataset import AzureMLAssetDataset
 
 logger = logging.getLogger(__name__)
 

@@ -9,8 +9,8 @@ from azure.ai.ml.entities import (
 )
 from azure.ai.ml.entities import Job
 
-from kedro_azureml.client import _get_azureml_client
-from kedro_azureml.config import (
+from kedro_azure_ml.client import _get_azureml_client
+from kedro_azure_ml.config import (
     ScheduleConfig,
     JobConfig,
     WorkspaceConfig,

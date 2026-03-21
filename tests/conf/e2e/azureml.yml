@@ -6,7 +6,7 @@ workspace:
 
 compute:
   __default__:
-    cluster_name: "kedro-azureml-e2e"
+    cluster_name: "kedro-azure-ml-e2e"
 
 execution:
   environment: ~

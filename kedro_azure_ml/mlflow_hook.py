@@ -4,7 +4,7 @@ This hook fires **before** kedro-mlflow's own hook (via ``tryfirst=True``)
 and sets environment variables / MLflow run metadata so that kedro-mlflow
 logs to the correct experiment and tags each child run with node context.
 
-The hook is completely inactive unless the ``KEDRO_AZUREML_MLFLOW_ENABLED``
+The hook is completely inactive unless the ``KEDRO_AZURE_ML_MLFLOW_ENABLED``
 environment variable is set to ``"1"`` (injected by the pipeline generator).
 """
 
@@ -13,18 +13,18 @@ import os
 
 from kedro.framework.hooks import hook_impl
 
-from kedro_azureml.constants import (
-    KEDRO_AZUREML_MLFLOW_ENABLED,
-    KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME,
-    KEDRO_AZUREML_MLFLOW_NODE_NAME,
-    KEDRO_AZUREML_MLFLOW_RUN_NAME,
+from kedro_azure_ml.constants import (
+    KEDRO_AZURE_ML_MLFLOW_ENABLED,
+    KEDRO_AZURE_ML_MLFLOW_EXPERIMENT_NAME,
+    KEDRO_AZURE_ML_MLFLOW_NODE_NAME,
+    KEDRO_AZURE_ML_MLFLOW_RUN_NAME,
 )
 
 logger = logging.getLogger(__name__)
 
 
 def _is_mlflow_integration_active() -> bool:
-    return os.environ.get(KEDRO_AZUREML_MLFLOW_ENABLED) == "1"
+    return os.environ.get(KEDRO_AZURE_ML_MLFLOW_ENABLED) == "1"
 
 
 class MlflowAzureMLHook:
@@ -44,11 +44,11 @@ class MlflowAzureMLHook:
         if not _is_mlflow_integration_active():
             return
 
-        experiment_name = os.environ.get(KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME)
+        experiment_name = os.environ.get(KEDRO_AZURE_ML_MLFLOW_EXPERIMENT_NAME)
         if experiment_name:
             os.environ["MLFLOW_EXPERIMENT_NAME"] = experiment_name
             logger.info(
-                "kedro-azureml: set MLFLOW_EXPERIMENT_NAME=%s", experiment_name
+                "kedro-azure-ml: set MLFLOW_EXPERIMENT_NAME=%s", experiment_name
             )
 
     @hook_impl(tryfirst=True)
@@ -60,7 +60,7 @@ class MlflowAzureMLHook:
             import mlflow
         except ImportError:
             logger.warning(
-                "kedro-azureml: mlflow is not installed, skipping run tagging"
+                "kedro-azure-ml: mlflow is not installed, skipping run tagging"
             )
             return
 
@@ -69,14 +69,14 @@ class MlflowAzureMLHook:
         # mlflow.yml (which may differ from the AzureML job experiment) and
         # pass a mismatched experiment_id to start_run(), causing an
         # MlflowException when MLFLOW_RUN_ID is set by AzureML.
-        experiment_name = os.environ.get(KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME)
+        experiment_name = os.environ.get(KEDRO_AZURE_ML_MLFLOW_EXPERIMENT_NAME)
         if experiment_name and mlflow.active_run() is None:
             mlflow.set_experiment(experiment_name)
             run_id = os.environ.get("MLFLOW_RUN_ID")
             if run_id:
                 mlflow.start_run(run_id=run_id)
                 logger.info(
-                    "kedro-azureml: resumed MLflow run %s in experiment '%s'",
+                    "kedro-azure-ml: resumed MLflow run %s in experiment '%s'",
                     run_id,
                     experiment_name,
                 )
@@ -85,8 +85,8 @@ class MlflowAzureMLHook:
         if active_run is None:
             return
 
-        node_name = os.environ.get(KEDRO_AZUREML_MLFLOW_NODE_NAME, "")
-        run_name = os.environ.get(KEDRO_AZUREML_MLFLOW_RUN_NAME, "")
+        node_name = os.environ.get(KEDRO_AZURE_ML_MLFLOW_NODE_NAME, "")
+        run_name = os.environ.get(KEDRO_AZURE_ML_MLFLOW_RUN_NAME, "")
         kedro_env = os.environ.get("KEDRO_ENV", "")
 
         tags = {}
@@ -101,7 +101,7 @@ class MlflowAzureMLHook:
 
         if tags:
             mlflow.set_tags(tags)
-            logger.info("kedro-azureml: tagged MLflow run with %s", tags)
+            logger.info("kedro-azure-ml: tagged MLflow run with %s", tags)
 
         # Set the child run name to include the node name for clarity
         if node_name:
@@ -126,7 +126,7 @@ class MlflowAzureMLHook:
 
         error_msg = str(error)[:250]
         mlflow.set_tag("kedro.error", error_msg)
-        node_name = os.environ.get(KEDRO_AZUREML_MLFLOW_NODE_NAME, "")
+        node_name = os.environ.get(KEDRO_AZURE_ML_MLFLOW_NODE_NAME, "")
         if node_name:
             mlflow.set_tag("kedro.failed_node", node_name)
 

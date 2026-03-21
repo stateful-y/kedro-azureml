@@ -1,8 +1,8 @@
 from kedro.framework.hooks import hook_impl
 
-from kedro_azureml.config import WorkspaceConfig, WorkspacesConfig
-from kedro_azureml.datasets.asset_dataset import AzureMLAssetDataset
-from kedro_azureml.runner import AzurePipelinesRunner
+from kedro_azure_ml.config import WorkspaceConfig, WorkspacesConfig
+from kedro_azure_ml.datasets.asset_dataset import AzureMLAssetDataset
+from kedro_azure_ml.runner import AzurePipelinesRunner
 
 
 class AzureMLLocalRunHook:

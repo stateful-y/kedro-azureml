@@ -1,17 +1,17 @@
 [project]
-name = "kedro-azureml"
+name = "kedro-azure-ml"
 version = "1.0.0"
 description = "Kedro plugin with Azure ML Pipelines support"
 readme = "README.md"
 authors = [
-  {name = "marcin.zablocki", email = "marcin.zablocki@getindata.com"}
+  {name = "Guillaume Tauzin", email = "gtauzin@stateful-y.io"}
 ]
 maintainers = [
-  {name = "GetInData MLOPS", email = "mlops@getindata.com"}
+  {name = "Guillaume Tauzin", email = "gtauzin@stateful-y.io"}
 ]
-homepage = "https://github.com/getindata/kedro-azureml"
-repository = "https://github.com/getindata/kedro-azureml"
-documentation = "https://kedro-azureml.readthedocs.io/"
+homepage = "https://github.com/stateful-y/kedro-azure-ml"
+repository = "https://github.com/stateful-y/kedro-azure-ml"
+documentation = "https://kedro-azure-ml.readthedocs.io/"
 keywords = ['kedro', 'mlops', 'azureml', 'machinelearning']
 license = "Apache-2.0"
 classifiers = [
@@ -64,8 +64,8 @@ pandas = "^2.2.0"
 [tool.poetry.plugins] # Optional super table
 
 [tool.poetry.plugins."kedro.project_commands"]
-"azureml" = "kedro_azureml.cli:commands"
+"azureml" = "kedro_azure_ml.cli:commands"
 
 [tool.poetry.plugins."kedro.hooks"]
-"azure_local_run_hook" = "kedro_azureml.hooks:azureml_local_run_hook"
-"mlflow_azureml_hook" = "kedro_azureml.mlflow_hook:mlflow_azureml_hook"
+"azure_local_run_hook" = "kedro_azure_ml.hooks:azureml_local_run_hook"
+"mlflow_azureml_hook" = "kedro_azure_ml.mlflow_hook:mlflow_azureml_hook"

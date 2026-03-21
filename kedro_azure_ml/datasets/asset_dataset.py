@@ -19,9 +19,9 @@ from kedro.io.core import (
     VersionNotFoundError,
 )
 
-from kedro_azureml.client import _get_azureml_client
-from kedro_azureml.config import WorkspaceConfig
-from kedro_azureml.datasets.pipeline_dataset import AzureMLPipelineDataset
+from kedro_azure_ml.client import _get_azureml_client
+from kedro_azure_ml.config import WorkspaceConfig
+from kedro_azure_ml.datasets.pipeline_dataset import AzureMLPipelineDataset
 
 AzureMLDataAssetType = Literal["uri_file", "uri_folder"]
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class AzureMLAssetDataset(AzureMLPipelineDataset, AbstractVersionedDataset):
     """
     AzureMLAssetDataset enables kedro-azureml to use azureml
-    v2-sdk Folder/File datasets for remote and local runs.
+    Folder/File datasets for remote and local runs.
 
     Args
     ----
@@ -53,7 +53,7 @@ class AzureMLAssetDataset(AzureMLPipelineDataset, AbstractVersionedDataset):
     .. code-block:: yaml
 
         my_folder_dataset:
-          type: kedro_azureml.datasets.AzureMLAssetDataset
+          type: kedro_azure_ml.datasets.AzureMLAssetDataset
           azureml_dataset: my_azureml_folder_dataset
           root_dir: data/01_raw/some_folder/
           versioned: True
@@ -62,7 +62,7 @@ class AzureMLAssetDataset(AzureMLPipelineDataset, AbstractVersionedDataset):
             filepath: "."
 
         my_file_dataset:
-            type: kedro_azureml.datasets.AzureMLAssetDataset
+            type: kedro_azure_ml.datasets.AzureMLAssetDataset
             azureml_dataset: my_azureml_file_dataset
             root_dir: data/01_raw/some_other_folder/
             versioned: True
@@ -71,7 +71,7 @@ class AzureMLAssetDataset(AzureMLPipelineDataset, AbstractVersionedDataset):
                 filepath: "companies.csv"
 
         my_versioned_dataset:
-            type: kedro_azureml.datasets.AzureMLAssetDataset
+            type: kedro_azure_ml.datasets.AzureMLAssetDataset
             azureml_dataset: my_azureml_dataset
             azureml_version: "100"
             root_dir: data/01_raw/some_data
@@ -212,7 +212,7 @@ class AzureMLAssetDataset(AzureMLPipelineDataset, AbstractVersionedDataset):
                     f"Did not find version {self._resolve_azureml_version()} for {self}"
                 )
 
-            # Use Azure ML v2 SDK native download functionality
+            # Use Azure ML SDK native download functionality
             # This avoids the ARM64 compatibility issues with azureml-fsspec
             with _get_azureml_client(
                 config=self._azureml_config

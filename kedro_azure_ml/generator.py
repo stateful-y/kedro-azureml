@@ -18,22 +18,22 @@ from kedro.io import DataCatalog
 from kedro.pipeline import Pipeline
 from kedro.pipeline.node import Node
 
-from kedro_azureml.config import (
+from kedro_azure_ml.config import (
     ClusterConfig,
     KedroAzureMLConfig,
     PipelineFilterOptions,
 )
-from kedro_azureml.constants import (
+from kedro_azure_ml.constants import (
     DISTRIBUTED_CONFIG_FIELD,
-    KEDRO_AZUREML_MLFLOW_ENABLED,
-    KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME,
-    KEDRO_AZUREML_MLFLOW_NODE_NAME,
-    KEDRO_AZUREML_MLFLOW_RUN_NAME,
+    KEDRO_AZURE_ML_MLFLOW_ENABLED,
+    KEDRO_AZURE_ML_MLFLOW_EXPERIMENT_NAME,
+    KEDRO_AZURE_ML_MLFLOW_NODE_NAME,
+    KEDRO_AZURE_ML_MLFLOW_RUN_NAME,
     PARAMS_PREFIX,
 )
-from kedro_azureml.datasets import AzureMLAssetDataset
-from kedro_azureml.distributed import DistributedNodeConfig
-from kedro_azureml.distributed.config import Framework
+from kedro_azure_ml.datasets import AzureMLAssetDataset
+from kedro_azure_ml.distributed import DistributedNodeConfig
+from kedro_azure_ml.distributed.config import Framework
 
 logger = logging.getLogger(__name__)
 
@@ -225,12 +225,12 @@ class AzureMLPipelineGenerator:
 
         mlflow_env_vars = {}
         if self.experiment_name is not None:
-            mlflow_env_vars[KEDRO_AZUREML_MLFLOW_ENABLED] = "1"
+            mlflow_env_vars[KEDRO_AZURE_ML_MLFLOW_ENABLED] = "1"
             if self.mlflow_run_name:
-                mlflow_env_vars[KEDRO_AZUREML_MLFLOW_RUN_NAME] = self.mlflow_run_name
+                mlflow_env_vars[KEDRO_AZURE_ML_MLFLOW_RUN_NAME] = self.mlflow_run_name
             if self.experiment_name:
-                mlflow_env_vars[KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME] = self.experiment_name
-            mlflow_env_vars[KEDRO_AZUREML_MLFLOW_NODE_NAME] = node.name
+                mlflow_env_vars[KEDRO_AZURE_ML_MLFLOW_EXPERIMENT_NAME] = self.experiment_name
+            mlflow_env_vars[KEDRO_AZURE_ML_MLFLOW_NODE_NAME] = node.name
 
         return command(
             name=self._sanitize_azure_name(node.name),

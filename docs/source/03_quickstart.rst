@@ -43,7 +43,7 @@ Project initialization
 
    .. code:: console
 
-      pip install "kedro>=0.18.5,<0.19" "kedro-docker" "kedro-azureml"
+      pip install "kedro>=0.18.5,<0.19" "kedro-docker" "kedro-azure-ml"
 
 2. Create new project (e.g. from starter)
 
@@ -55,15 +55,15 @@ Project initialization
       ============
       Please enter a human readable name for your new project.
       Spaces, hyphens, and underscores are allowed.
-       [Spaceflights]: kedro_azureml_demo
+       [Spaceflights]: kedro_azure_ml_demo
 
-      The project name 'kedro_azureml_demo' has been applied to:
-      - The project title in /Users/marcin/Dev/tmp/kedro-azureml-demo/README.md
-      - The folder created for your project in /Users/marcin/Dev/tmp/kedro-azureml-demo
-      - The project's python package in /Users/marcin/Dev/tmp/kedro-azureml-demo/src/kedro_azureml_demo
+      The project name 'kedro_azure_ml_demo' has been applied to:
+      - The project title in /Users/marcin/Dev/tmp/kedro-azure-ml-demo/README.md
+      - The folder created for your project in /Users/marcin/Dev/tmp/kedro-azure-ml-demo
+      - The project's python package in /Users/marcin/Dev/tmp/kedro-azure-ml-demo/src/kedro_azure_ml_demo
 
-3. Go to the project's directory: ``cd kedro-azureml-demo``
-4. Add ``kedro-azureml`` to ``src/requirements.txt``
+3. Go to the project's directory: ``cd kedro-azure-ml-demo``
+4. Add ``kedro-azure-ml`` to ``src/requirements.txt``
 5. (optional) Remove ``kedro-telemetry`` from ``src/requirements.txt``
    or set appropriate settings
    (`https://github.com/kedro-org/kedro-plugins/tree/main/kedro-telemetry <https://github.com/kedro-org/kedro-plugins/tree/main/kedro-telemetry>`__).
@@ -190,7 +190,7 @@ can be removed from the ``Dockerfile``.
 Now you can re-use this environment and run the pipeline without the need to build the docker image again (unless you add some dependencies to your environment, obviously 😉 ).
 
 .. warning::
-    | Azure Code upload feature has issues with empty folders as identified in `GitHub #33 <https://github.com/getindata/kedro-azureml/issues/33>`__, where empty folders or folders with empty files might not get uploaded to Azure ML, which might result in the failing pipeline.
+    | Azure Code upload feature has issues with empty folders as identified in `GitHub #33 <https://github.com/stateful-y/kedro-azure-ml/issues/33>`__, where empty folders or folders with empty files might not get uploaded to Azure ML, which might result in the failing pipeline.
     | We recommend to:
     | - make sure that Kedro environments you intent to use in Azure have at least one non-empty file specified
     | - gracefully handle folder creation in your pipeline's code (e.g. if your code depends on an existence of some folder)
@@ -359,7 +359,7 @@ The plugins supports distributed training via native Azure ML distributed orches
 - PyTorch - https://learn.microsoft.com/en-us/azure/machine-learning/how-to-train-distributed-gpu#pytorch
 - TensorFlow - https://learn.microsoft.com/en-us/azure/machine-learning/how-to-train-distributed-gpu#tensorflow
 
-If one of your Kedro's pipeline nodes requires distributed training (e.g. you train a neural network with PyTorch), you can mark the node with ``distributed_job`` decorator from ``kedro_azureml.distributed.decorators`` and use native Kedro parameters to specify the number of nodes you want to spawn for the job.
+If one of your Kedro's pipeline nodes requires distributed training (e.g. you train a neural network with PyTorch), you can mark the node with ``distributed_job`` decorator from ``kedro_azure_ml.distributed.decorators`` and use native Kedro parameters to specify the number of nodes you want to spawn for the job.
 An example for PyTorch looks like this:
 
 .. code:: python

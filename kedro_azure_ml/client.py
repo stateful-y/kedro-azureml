@@ -8,8 +8,8 @@ from typing import Callable, Optional
 from azure.ai.ml import MLClient
 from azure.ai.ml.entities import Job
 
-from kedro_azureml.auth.utils import get_azureml_credentials
-from kedro_azureml.config import WorkspaceConfig
+from kedro_azure_ml.auth.utils import get_azureml_credentials
+from kedro_azure_ml.config import WorkspaceConfig
 
 logger = logging.getLogger(__name__)
 

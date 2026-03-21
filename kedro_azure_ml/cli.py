@@ -9,7 +9,7 @@ from kedro.framework.cli.project import LOAD_VERSION_HELP
 from kedro.framework.cli.utils import _split_load_versions
 from kedro.framework.startup import ProjectMetadata
 
-from kedro_azureml.cli_functions import (
+from kedro_azure_ml.cli_functions import (
     compile_job_pipelines,
     dynamic_import_job_schedule_func_from_str,
     parse_extra_env_params,
@@ -18,10 +18,10 @@ from kedro_azureml.cli_functions import (
     verify_configuration_directory_for_azure,
     warn_about_ignore_files,
 )
-from kedro_azureml.config import CONFIG_TEMPLATE_YAML
-from kedro_azureml.manager import KedroContextManager
-from kedro_azureml.runner import AzurePipelinesRunner
-from kedro_azureml.utils import CliContext
+from kedro_azure_ml.config import CONFIG_TEMPLATE_YAML
+from kedro_azure_ml.manager import KedroContextManager
+from kedro_azure_ml.runner import AzurePipelinesRunner
+from kedro_azure_ml.utils import CliContext
 
 logger = logging.getLogger(__name__)
 

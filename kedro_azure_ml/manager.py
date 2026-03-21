@@ -10,7 +10,7 @@ from kedro.config import (
 from kedro.framework.session import KedroSession
 from omegaconf import DictConfig, OmegaConf
 
-from kedro_azureml.config import KedroAzureMLConfig
+from kedro_azure_ml.config import KedroAzureMLConfig
 
 
 class KedroContextManager:

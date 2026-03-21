@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 import yaml
 from pydantic import BaseModel, RootModel, model_validator
 
-from kedro_azureml.utils import update_dict
+from kedro_azure_ml.utils import update_dict
 
 
 class WorkspaceConfig(BaseModel):

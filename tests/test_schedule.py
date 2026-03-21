@@ -9,7 +9,7 @@ from azure.ai.ml.entities import CronTrigger, JobSchedule, RecurrenceTrigger
 
 from kedro.pipeline import Pipeline, node, pipeline
 
-from kedro_azureml.config import (
+from kedro_azure_ml.config import (
     CronScheduleConfig,
     KedroAzureMLConfig,
     PipelineFilterOptions,
@@ -19,8 +19,8 @@ from kedro_azureml.config import (
     JobConfig,
     _CONFIG_TEMPLATE,
 )
-from kedro_azureml.generator import AzureMLPipelineGenerator
-from kedro_azureml.scheduler import (
+from kedro_azure_ml.generator import AzureMLPipelineGenerator
+from kedro_azure_ml.scheduler import (
     build_job_schedule,
     build_trigger,
     resolve_schedule,
@@ -309,8 +309,8 @@ class TestSubmitCLI:
     ):
         """--dry-run should report what would be created without calling Azure."""
         from click.testing import CliRunner
-        from kedro_azureml import cli
-        from kedro_azureml.manager import KedroContextManager
+        from kedro_azure_ml import cli
+        from kedro_azure_ml.manager import KedroContextManager
 
         create_kedro_conf_dirs(tmp_path)
 
@@ -363,8 +363,8 @@ class TestSubmitCLI:
     ):
         """--job flag should filter to only the named job."""
         from click.testing import CliRunner
-        from kedro_azureml import cli
-        from kedro_azureml.manager import KedroContextManager
+        from kedro_azure_ml import cli
+        from kedro_azure_ml.manager import KedroContextManager
 
         create_kedro_conf_dirs(tmp_path)
 
@@ -419,8 +419,8 @@ class TestSubmitCLI:
     ):
         """Requesting a non-existent job name should error."""
         from click.testing import CliRunner
-        from kedro_azureml import cli
-        from kedro_azureml.manager import KedroContextManager
+        from kedro_azure_ml import cli
+        from kedro_azure_ml.manager import KedroContextManager
 
         create_kedro_conf_dirs(tmp_path)
 
@@ -463,8 +463,8 @@ class TestSubmitCLI:
     ):
         """Submit should error when no jobs section exists in config."""
         from click.testing import CliRunner
-        from kedro_azureml import cli
-        from kedro_azureml.manager import KedroContextManager
+        from kedro_azure_ml import cli
+        from kedro_azure_ml.manager import KedroContextManager
 
         create_kedro_conf_dirs(tmp_path)
 

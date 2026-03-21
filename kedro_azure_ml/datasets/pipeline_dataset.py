@@ -10,7 +10,7 @@ from kedro.io.core import (
     parse_dataset_definition,
 )
 
-from kedro_azureml.distributed.utils import (
+from kedro_azure_ml.distributed.utils import (
     is_distributed_environment,
     is_distributed_master_node,
 )
@@ -47,7 +47,7 @@ class AzureMLPipelineDataset(AbstractDataset):
     .. code-block:: yaml
 
         processed_images:
-          type: kedro_azureml.datasets.AzureMLPipelineDataset
+          type: kedro_azure_ml.datasets.AzureMLPipelineDataset
           root_dir: 'data/01_raw'
           dataset:
             type: pillow.ImageDataset

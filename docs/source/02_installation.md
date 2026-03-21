@@ -18,20 +18,20 @@ $ pip install "kedro>=0.18.1,<0.19.0"
 
 ### Install from PyPI
 
-You can install ``kedro-azureml`` plugin from ``PyPi`` with `pip`:
+You can install ``kedro-azure-ml`` plugin from ``PyPi`` with `pip`:
 
 ```console
-pip install --upgrade kedro-azureml
+pip install --upgrade kedro-azure-ml
 ```
 
-Optionally, extra can be specified: `kedro-azureml[mlflow]`.
+Optionally, extra can be specified: `kedro-azure-ml[mlflow]`.
 
 ### Install from sources
 
 You may want to install the develop branch which has unreleased features:
 
 ```console
-pip install git+https://github.com/getindata/kedro-azureml.git@develop
+pip install git+https://github.com/stateful-y/kedro-azure-ml.git@develop
 ```
 
 ## Available commands

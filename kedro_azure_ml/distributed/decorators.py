@@ -1,8 +1,8 @@
 from functools import wraps
 from typing import Union
 
-from kedro_azureml.constants import DISTRIBUTED_CONFIG_FIELD
-from kedro_azureml.distributed.config import DistributedNodeConfig, Framework
+from kedro_azure_ml.constants import DISTRIBUTED_CONFIG_FIELD
+from kedro_azure_ml.distributed.config import DistributedNodeConfig, Framework
 
 
 def distributed_job(framework: Framework, num_nodes: Union[str, int], **kwargs):

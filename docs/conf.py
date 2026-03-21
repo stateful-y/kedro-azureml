@@ -17,7 +17,7 @@ import datetime as dt
 # sys.path.insert(0, os.path.abspath('.'))
 import re
 
-from kedro_azureml import __version__ as release
+from kedro_azure_ml import __version__ as release
 
 # -- Project information -----------------------------------------------------
 
