@@ -13,7 +13,7 @@ from kedro.io.core import (
     parse_dataset_definition,
 )
 
-from kedro_azure_ml.distributed.utils import (
+from kedro_azureml_pipeline.distributed.utils import (
     is_distributed_environment,
     is_distributed_master_node,
 )
@@ -42,8 +42,8 @@ class AzureMLPipelineDataset(AbstractDataset):
 
     See Also
     --------
-    `kedro_azure_ml.datasets.AzureMLAssetDataset` : Versioned Data Asset extension.
-    `kedro_azure_ml.runner.AzurePipelinesRunner` : Rewires dataset paths at runtime.
+    `kedro_azureml_pipeline.datasets.AzureMLAssetDataset` : Versioned Data Asset extension.
+    `kedro_azureml_pipeline.runner.AzurePipelinesRunner` : Rewires dataset paths at runtime.
     """
 
     def __init__(

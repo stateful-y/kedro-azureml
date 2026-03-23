@@ -21,9 +21,9 @@ from kedro.io.core import (
     VersionNotFoundError,
 )
 
-from kedro_azure_ml.client import _get_azureml_client
-from kedro_azure_ml.config import WorkspaceConfig
-from kedro_azure_ml.datasets.pipeline_dataset import AzureMLPipelineDataset
+from kedro_azureml_pipeline.client import _get_azureml_client
+from kedro_azureml_pipeline.config import WorkspaceConfig
+from kedro_azureml_pipeline.datasets.pipeline_dataset import AzureMLPipelineDataset
 
 AzureMLDataAssetType = Literal["uri_file", "uri_folder"]
 logger = logging.getLogger(__name__)
@@ -56,9 +56,9 @@ class AzureMLAssetDataset(AzureMLPipelineDataset, AbstractVersionedDataset):
 
     See Also
     --------
-    `kedro_azure_ml.datasets.AzureMLPipelineDataset` : Base class for pipeline data passing.
-    `kedro_azure_ml.hooks.AzureMLLocalRunHook` : Configures this dataset for local runs.
-    `kedro_azure_ml.runner.AzurePipelinesRunner` : Rewires paths during remote runs.
+    `kedro_azureml_pipeline.datasets.AzureMLPipelineDataset` : Base class for pipeline data passing.
+    `kedro_azureml_pipeline.hooks.AzureMLLocalRunHook` : Configures this dataset for local runs.
+    `kedro_azureml_pipeline.runner.AzurePipelinesRunner` : Rewires paths during remote runs.
     """
 
     versioned = True

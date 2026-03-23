@@ -33,7 +33,7 @@ This **{{ release_type }} release** includes {{ commits | length }} commit{%- if
 
 ### {{ group | striptags | trim | upper_first }}
 {%- for commit in commits %}
-- {{ commit.message | upper_first }}{%- if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}](https://github.com/stateful-y/kedro-azure-ml/pull/{{ commit.remote.pr_number }})){%- endif %}{%- if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}
+- {{ commit.message | upper_first }}{%- if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}](https://github.com/stateful-y/kedro-azureml-pipeline/pull/{{ commit.remote.pr_number }})){%- endif %}{%- if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}
 {%- endfor %}
 {%- endfor %}
 {%- set new_contributors = commits | filter(attribute="remote.username") | map(attribute="remote.username") | unique %}
@@ -99,4 +99,4 @@ sort_commits = "oldest"
 
 [remote.github]
 owner = "stateful-y"
-repo = "kedro-azure-ml"
+repo = "kedro-azureml-pipeline"

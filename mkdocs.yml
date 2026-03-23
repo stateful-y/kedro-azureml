@@ -1,8 +1,8 @@
-site_name: Kedro Azure ML
-site_description: Kedro plugin with Azure ML Pipelines support
-site_url: https://kedro-azure-ml.readthedocs.io/
-repo_url: https://github.com/stateful-y/kedro-azure-ml
-repo_name: stateful-y/kedro-azure-ml
+site_name: Kedro AzureML Pipeline
+site_description: Kedro plugin to support running pipelines on Microsoft Azure ML Pipeline
+site_url: https://kedro-azureml-pipeline.readthedocs.io/
+repo_url: https://github.com/stateful-y/kedro-azureml-pipeline
+repo_name: stateful-y/kedro-azureml-pipeline
 edit_uri: edit/main/docs/
 
 hooks:
@@ -143,7 +143,7 @@ nav:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/stateful-y/kedro-azure-ml
+      link: https://github.com/stateful-y/kedro-azureml-pipeline
 
 watch:
   - mkdocs.yml

@@ -28,8 +28,8 @@ class DistributedNodeConfig:
 
     See Also
     --------
-    `kedro_azure_ml.distributed.decorators.distributed_job` : Decorator that creates this config.
-    `kedro_azure_ml.generator.AzureMLPipelineGenerator` : Reads this config during generation.
+    `kedro_azureml_pipeline.distributed.decorators.distributed_job` : Decorator that creates this config.
+    `kedro_azureml_pipeline.generator.AzureMLPipelineGenerator` : Reads this config during generation.
     """
 
     framework: Framework

@@ -12,6 +12,6 @@ include_examples: false
 license: Apache-2.0
 max_python_version: '3.13'
 min_python_version: '3.11'
-package_name: kedro_azure_ml
-project_name: Kedro Azure ML
-project_slug: kedro-azure-ml
+package_name: kedro_azureml_pipeline
+project_name: Kedro AzureML Pipeline
+project_slug: kedro-azureml-pipeline

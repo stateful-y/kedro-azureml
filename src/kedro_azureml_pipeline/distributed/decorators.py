@@ -2,8 +2,8 @@
 
 from functools import wraps
 
-from kedro_azure_ml.constants import DISTRIBUTED_CONFIG_FIELD
-from kedro_azure_ml.distributed.config import DistributedNodeConfig, Framework
+from kedro_azureml_pipeline.constants import DISTRIBUTED_CONFIG_FIELD
+from kedro_azureml_pipeline.distributed.config import DistributedNodeConfig, Framework
 
 
 def distributed_job(framework: Framework, num_nodes: str | int, **kwargs):
@@ -26,9 +26,9 @@ def distributed_job(framework: Framework, num_nodes: str | int, **kwargs):
 
     See Also
     --------
-    `kedro_azure_ml.distributed.config.DistributedNodeConfig` : Config attached by this decorator.
-    `kedro_azure_ml.distributed.config.Framework` : Supported frameworks.
-    `kedro_azure_ml.generator.AzureMLPipelineGenerator` : Reads the attached config.
+    `kedro_azureml_pipeline.distributed.config.DistributedNodeConfig` : Config attached by this decorator.
+    `kedro_azureml_pipeline.distributed.config.Framework` : Supported frameworks.
+    `kedro_azureml_pipeline.generator.AzureMLPipelineGenerator` : Reads the attached config.
     """
 
     def _decorator(func):

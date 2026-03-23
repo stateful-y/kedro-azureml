@@ -1,6 +1,6 @@
 # User Guide
 
-This guide covers configuration, CLI commands, and advanced features of Kedro Azure ML.
+This guide covers configuration, CLI commands, and advanced features of Kedro AzureML Pipeline.
 
 ## Configuration reference
 
@@ -225,7 +225,7 @@ Use `AzureMLAssetDataset` in your Kedro catalog to read and write Azure ML data 
 ```yaml
 # conf/base/catalog.yml
 model_input:
-  type: kedro_azure_ml.datasets.AzureMLAssetDataset
+  type: kedro_azureml_pipeline.datasets.AzureMLAssetDataset
   azureml_dataset: "my-dataset"
   version_type: "uri_folder"
   dataset:
@@ -240,7 +240,7 @@ The `AzureMLLocalRunHook` (registered in `settings.py`) automatically resolves d
 Decorate Kedro node functions with `@distributed_job` to run them as distributed training steps:
 
 ```python
-from kedro_azure_ml.distributed import distributed_job, Framework
+from kedro_azureml_pipeline.distributed import distributed_job, Framework
 
 @distributed_job(framework=Framework.PyTorch, num_nodes=4)
 def train_model(data):
@@ -260,13 +260,13 @@ The `num_nodes` and optional `processes_per_node` parameters control the distrib
 
 ## MLflow integration
 
-When using [kedro-mlflow](https://kedro-mlflow.readthedocs.io/), Kedro Azure ML includes an `MlflowAzureMLHook` that coordinates experiment tracking:
+When using [kedro-mlflow](https://kedro-mlflow.readthedocs.io/), Kedro AzureML Pipeline includes an `MlflowAzureMLHook` that coordinates experiment tracking:
 
 - Sets the MLflow tracking URI to the Azure ML workspace
 - Tags each child run with the Kedro node name
 - Routes logs to the correct experiment
 
-The hook activates automatically when the `KEDRO_AZURE_ML_MLFLOW_ENABLED` environment variable is set to `"1"` (injected by the pipeline generator during remote execution).
+The hook activates automatically when the `KEDRO_AZUREML_MLFLOW_ENABLED` environment variable is set to `"1"` (injected by the pipeline generator during remote execution).
 
 ## Multiple workspaces
 

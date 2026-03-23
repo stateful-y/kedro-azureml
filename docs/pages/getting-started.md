@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks you through installing Kedro Azure ML, configuring your Azure ML workspace, and submitting your first pipeline.
+This guide walks you through installing Kedro AzureML Pipeline, configuring your Azure ML workspace, and submitting your first pipeline.
 
 ## Prerequisites
 
@@ -13,11 +13,11 @@ This guide walks you through installing Kedro Azure ML, configuring your Azure M
 
 === "pip"
     ```bash
-    pip install kedro-azure-ml
+    pip install kedro-azureml-pipeline
     ```
 === "uv"
     ```bash
-    uv add kedro-azure-ml
+    uv add kedro-azureml-pipeline
     ```
 
 Verify the installation:
@@ -67,10 +67,10 @@ execution:
 
 ## Register the hooks
 
-Add the Kedro Azure ML hooks to your project's `settings.py`:
+Add the Kedro AzureML Pipeline hooks to your project's `settings.py`:
 
 ```python
-from kedro_azure_ml.hooks import azureml_local_run_hook
+from kedro_azureml_pipeline.hooks import azureml_local_run_hook
 
 HOOKS = (azureml_local_run_hook,)
 ```

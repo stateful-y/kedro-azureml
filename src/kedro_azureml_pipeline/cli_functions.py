@@ -10,9 +10,9 @@ from pathlib import Path
 
 import click
 
-from kedro_azure_ml.generator import AzureMLPipelineGenerator
-from kedro_azure_ml.manager import KedroContextManager
-from kedro_azure_ml.utils import CliContext
+from kedro_azureml_pipeline.generator import AzureMLPipelineGenerator
+from kedro_azureml_pipeline.manager import KedroContextManager
+from kedro_azureml_pipeline.utils import CliContext
 
 logger = logging.getLogger()
 
@@ -438,7 +438,7 @@ def run_jobs(
     bool
         ``True`` if all jobs ran successfully.
     """
-    from kedro_azure_ml.client import AzureMLPipelinesClient
+    from kedro_azureml_pipeline.client import AzureMLPipelinesClient
 
     with _prepare_jobs(ctx, aml_env, params, extra_env, load_versions, job_names) as (
         config,
@@ -529,7 +529,7 @@ def schedule_jobs(
     bool
         ``True`` if all schedules were created/updated successfully.
     """
-    from kedro_azure_ml.scheduler import (
+    from kedro_azureml_pipeline.scheduler import (
         AzureMLScheduleClient,
         build_job_schedule,
         build_trigger,

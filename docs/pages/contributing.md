@@ -1,6 +1,6 @@
-# Contributing to Kedro Azure ML
+# Contributing to Kedro AzureML Pipeline
 
-Thank you for your interest in contributing to Kedro Azure ML! This document provides guidelines for contributing to the project.
+Thank you for your interest in contributing to Kedro AzureML Pipeline! This document provides guidelines for contributing to the project.
 
 ## Code of Conduct
 
@@ -22,8 +22,8 @@ We are committed to providing a welcoming and inclusive environment for all cont
 2. Clone your fork:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/kedro-azure-ml.git
-cd kedro-azure-ml
+git clone https://github.com/YOUR_USERNAME/kedro-azureml-pipeline.git
+cd kedro-azureml-pipeline
 ```
 
 3. Install dependencies:
@@ -103,7 +103,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) for commi
 
 ### Running Tests
 
-Kedro Azure ML uses pytest with markers to categorize tests:
+Kedro AzureML Pipeline uses pytest with markers to categorize tests:
 
 - **Fast tests**: Unit tests that run quickly
 - **Slow tests**: `@pytest.mark.slow`
@@ -153,7 +153,7 @@ Run tests with coverage:
     ```
 === "uv run"
     ```bash
-    uv run pytest --cov=kedro_azure_ml --cov-report=html
+    uv run pytest --cov=kedro_azureml_pipeline --cov-report=html
     ```
 
 #### CI Test Strategy

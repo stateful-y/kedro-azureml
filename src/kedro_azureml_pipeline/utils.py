@@ -18,8 +18,8 @@ class CliContext:
 
     See Also
     --------
-    `kedro_azure_ml.manager.KedroContextManager` : Uses env from this context.
-    `kedro_azure_ml.cli_functions.submit_scheduled_jobs` : Receives this as ``ctx``.
+    `kedro_azureml_pipeline.manager.KedroContextManager` : Uses env from this context.
+    `kedro_azureml_pipeline.cli_functions.submit_scheduled_jobs` : Receives this as ``ctx``.
     """
 
     env: str

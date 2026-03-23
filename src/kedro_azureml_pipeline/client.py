@@ -10,8 +10,8 @@ from tempfile import TemporaryDirectory
 from azure.ai.ml import MLClient
 from azure.ai.ml.entities import Job
 
-from kedro_azure_ml.auth.utils import get_azureml_credentials
-from kedro_azure_ml.config import WorkspaceConfig
+from kedro_azureml_pipeline.auth.utils import get_azureml_credentials
+from kedro_azureml_pipeline.config import WorkspaceConfig
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +55,9 @@ class AzureMLPipelinesClient:
 
     See Also
     --------
-    `kedro_azure_ml.generator.AzureMLPipelineGenerator` : Generates the pipeline job.
-    `kedro_azure_ml.scheduler.AzureMLScheduleClient` : Schedule-based submission.
-    `kedro_azure_ml.config.WorkspaceConfig` : Workspace config used by ``run``.
+    `kedro_azureml_pipeline.generator.AzureMLPipelineGenerator` : Generates the pipeline job.
+    `kedro_azureml_pipeline.scheduler.AzureMLScheduleClient` : Schedule-based submission.
+    `kedro_azureml_pipeline.config.WorkspaceConfig` : Workspace config used by ``run``.
     """
 
     def __init__(self, azure_pipeline: Job):

@@ -11,7 +11,7 @@ from kedro.config import (
 from kedro.framework.session import KedroSession
 from omegaconf import DictConfig, OmegaConf
 
-from kedro_azure_ml.config import KedroAzureMLConfig
+from kedro_azureml_pipeline.config import KedroAzureMLConfig
 
 
 class KedroContextManager:
@@ -28,8 +28,8 @@ class KedroContextManager:
 
     See Also
     --------
-    `kedro_azure_ml.config.KedroAzureMLConfig` : Configuration loaded via ``plugin_config``.
-    `kedro_azure_ml.cli_functions.submit_scheduled_jobs` : Uses this manager for context.
+    `kedro_azureml_pipeline.config.KedroAzureMLConfig` : Configuration loaded via ``plugin_config``.
+    `kedro_azureml_pipeline.cli_functions.submit_scheduled_jobs` : Uses this manager for context.
     """
 
     def __init__(

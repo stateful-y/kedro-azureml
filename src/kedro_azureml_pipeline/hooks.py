@@ -2,9 +2,9 @@
 
 from kedro.framework.hooks import hook_impl
 
-from kedro_azure_ml.config import WorkspacesConfig
-from kedro_azure_ml.datasets.asset_dataset import AzureMLAssetDataset
-from kedro_azure_ml.runner import AzurePipelinesRunner
+from kedro_azureml_pipeline.config import WorkspacesConfig
+from kedro_azureml_pipeline.datasets.asset_dataset import AzureMLAssetDataset
+from kedro_azureml_pipeline.runner import AzurePipelinesRunner
 
 
 class AzureMLLocalRunHook:
@@ -12,9 +12,9 @@ class AzureMLLocalRunHook:
 
     See Also
     --------
-    `kedro_azure_ml.datasets.AzureMLAssetDataset` : Dataset managed by this hook.
-    `kedro_azure_ml.runner.AzurePipelinesRunner` : Remote runner detected by the hook.
-    `kedro_azure_ml.config.WorkspacesConfig` : Workspace config injected into datasets.
+    `kedro_azureml_pipeline.datasets.AzureMLAssetDataset` : Dataset managed by this hook.
+    `kedro_azureml_pipeline.runner.AzurePipelinesRunner` : Remote runner detected by the hook.
+    `kedro_azureml_pipeline.config.WorkspacesConfig` : Workspace config injected into datasets.
     """
 
     @hook_impl

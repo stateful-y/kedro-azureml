@@ -1,4 +1,4 @@
-"""Kedro Azure ML."""
+"""Kedro AzureML Pipeline."""
 
 from importlib.metadata import version
 

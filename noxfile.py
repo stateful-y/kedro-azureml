@@ -1,4 +1,4 @@
-"""Nox sessions for Kedro Azure ML."""
+"""Nox sessions for Kedro AzureML Pipeline."""
 
 from pathlib import Path
 
@@ -43,7 +43,7 @@ def test_coverage(session: nox.Session) -> None:
     session.run(
         "coverage",
         "run",
-        "--source=src/kedro_azure_ml",
+        "--source=src/kedro_azureml_pipeline",
         "-m",
         "pytest",
         "tests",
@@ -77,7 +77,7 @@ def test(session: nox.Session) -> None:
     session.run(
         "pytest",
         "tests",
-        "src/kedro_azure_ml",
+        "src/kedro_azureml_pipeline",
         "--doctest-modules",
         "--doctest-continue-on-failure",
         "-n",
@@ -163,7 +163,7 @@ def test_docstrings(session: nox.Session) -> None:
         "--doctest-modules",
         "--doctest-continue-on-failure",
         "--no-cov",
-        "src/kedro_azure_ml",
+        "src/kedro_azureml_pipeline",
         *session.posargs,
         success_codes=[0, 5],
     )

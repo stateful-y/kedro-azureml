@@ -20,22 +20,22 @@ from kedro.io import DataCatalog
 from kedro.pipeline import Pipeline
 from kedro.pipeline.node import Node
 
-from kedro_azure_ml.config import (
+from kedro_azureml_pipeline.config import (
     ClusterConfig,
     KedroAzureMLConfig,
     PipelineFilterOptions,
 )
-from kedro_azure_ml.constants import (
+from kedro_azureml_pipeline.constants import (
     DISTRIBUTED_CONFIG_FIELD,
-    KEDRO_AZURE_ML_MLFLOW_ENABLED,
-    KEDRO_AZURE_ML_MLFLOW_EXPERIMENT_NAME,
-    KEDRO_AZURE_ML_MLFLOW_NODE_NAME,
-    KEDRO_AZURE_ML_MLFLOW_RUN_NAME,
+    KEDRO_AZUREML_MLFLOW_ENABLED,
+    KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME,
+    KEDRO_AZUREML_MLFLOW_NODE_NAME,
+    KEDRO_AZUREML_MLFLOW_RUN_NAME,
     PARAMS_PREFIX,
 )
-from kedro_azure_ml.datasets import AzureMLAssetDataset
-from kedro_azure_ml.distributed import DistributedNodeConfig
-from kedro_azure_ml.distributed.config import Framework
+from kedro_azureml_pipeline.datasets import AzureMLAssetDataset
+from kedro_azureml_pipeline.distributed import DistributedNodeConfig
+from kedro_azureml_pipeline.distributed.config import Framework
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class ConfigException(BaseException):
 
     See Also
     --------
-    `kedro_azure_ml.generator.AzureMLPipelineGenerator` : Generator that raises this.
+    `kedro_azureml_pipeline.generator.AzureMLPipelineGenerator` : Generator that raises this.
     """
 
     pass
@@ -83,10 +83,10 @@ class AzureMLPipelineGenerator:
 
     See Also
     --------
-    `kedro_azure_ml.config.KedroAzureMLConfig` : Plugin configuration consumed here.
-    `kedro_azure_ml.client.AzureMLPipelinesClient` : Submits the generated pipeline.
-    `kedro_azure_ml.runner.AzurePipelinesRunner` : Executes nodes within Azure ML.
-    `kedro_azure_ml.datasets.AzureMLAssetDataset` : Datasets wired into the pipeline.
+    `kedro_azureml_pipeline.config.KedroAzureMLConfig` : Plugin configuration consumed here.
+    `kedro_azureml_pipeline.client.AzureMLPipelinesClient` : Submits the generated pipeline.
+    `kedro_azureml_pipeline.runner.AzurePipelinesRunner` : Executes nodes within Azure ML.
+    `kedro_azureml_pipeline.datasets.AzureMLAssetDataset` : Datasets wired into the pipeline.
     """
 
     def __init__(
@@ -431,12 +431,12 @@ class AzureMLPipelineGenerator:
 
         mlflow_env_vars = {}
         if self.experiment_name is not None:
-            mlflow_env_vars[KEDRO_AZURE_ML_MLFLOW_ENABLED] = "1"
+            mlflow_env_vars[KEDRO_AZUREML_MLFLOW_ENABLED] = "1"
             if self.mlflow_run_name:
-                mlflow_env_vars[KEDRO_AZURE_ML_MLFLOW_RUN_NAME] = self.mlflow_run_name
+                mlflow_env_vars[KEDRO_AZUREML_MLFLOW_RUN_NAME] = self.mlflow_run_name
             if self.experiment_name:
-                mlflow_env_vars[KEDRO_AZURE_ML_MLFLOW_EXPERIMENT_NAME] = self.experiment_name
-            mlflow_env_vars[KEDRO_AZURE_ML_MLFLOW_NODE_NAME] = node.name
+                mlflow_env_vars[KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME] = self.experiment_name
+            mlflow_env_vars[KEDRO_AZUREML_MLFLOW_NODE_NAME] = node.name
 
         return command(
             name=self._sanitize_azure_name(node.name),

@@ -1,4 +1,4 @@
-"""Click CLI commands for the Kedro Azure ML plugin."""
+"""Click CLI commands for the Kedro AzureML Pipeline plugin."""
 
 import json
 import logging
@@ -11,7 +11,7 @@ from kedro.framework.cli.project import LOAD_VERSION_HELP
 from kedro.framework.cli.utils import _split_load_versions
 from kedro.framework.startup import ProjectMetadata
 
-from kedro_azure_ml.cli_functions import (
+from kedro_azureml_pipeline.cli_functions import (
     compile_job_pipelines,
     dynamic_import_job_schedule_func_from_str,
     parse_extra_env_params,
@@ -21,10 +21,10 @@ from kedro_azure_ml.cli_functions import (
     verify_configuration_directory_for_azure,
     warn_about_ignore_files,
 )
-from kedro_azure_ml.config import CONFIG_TEMPLATE_YAML
-from kedro_azure_ml.manager import KedroContextManager
-from kedro_azure_ml.runner import AzurePipelinesRunner
-from kedro_azure_ml.utils import CliContext
+from kedro_azureml_pipeline.config import CONFIG_TEMPLATE_YAML
+from kedro_azureml_pipeline.manager import KedroContextManager
+from kedro_azureml_pipeline.runner import AzurePipelinesRunner
+from kedro_azureml_pipeline.utils import CliContext
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ def azureml_group(ctx, metadata: ProjectMetadata, env):
 @azureml_group.command()
 @click.pass_obj
 def init(ctx: CliContext):
-    """Create basic configuration for the Kedro Azure ML plugin."""
+    """Create basic configuration for the Kedro AzureML Pipeline plugin."""
 
     target_path = Path.cwd().joinpath(f"conf/{ctx.env}/azureml.yml")
     target_path.write_text(CONFIG_TEMPLATE_YAML)

@@ -19,8 +19,8 @@ def get_azureml_credentials():
 
     See Also
     --------
-    `kedro_azure_ml.client.AzureMLPipelinesClient` : Uses credentials for job submission.
-    `kedro_azure_ml.scheduler.AzureMLScheduleClient` : Uses credentials for schedule management.
+    `kedro_azureml_pipeline.client.AzureMLPipelinesClient` : Uses credentials for job submission.
+    `kedro_azureml_pipeline.scheduler.AzureMLScheduleClient` : Uses credentials for schedule management.
     """
     try:
         # On a AzureML compute instance, the managed identity will take precedence,

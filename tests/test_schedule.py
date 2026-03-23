@@ -9,7 +9,7 @@ import yaml
 from azure.ai.ml.entities import CronTrigger, JobSchedule, RecurrenceTrigger
 from kedro.pipeline import Pipeline, node, pipeline
 
-from kedro_azure_ml.config import (
+from kedro_azureml_pipeline.config import (
     _CONFIG_TEMPLATE,
     CronScheduleConfig,
     JobConfig,
@@ -19,8 +19,8 @@ from kedro_azure_ml.config import (
     RecurrenceScheduleConfig,
     ScheduleConfig,
 )
-from kedro_azure_ml.generator import AzureMLPipelineGenerator
-from kedro_azure_ml.scheduler import (
+from kedro_azureml_pipeline.generator import AzureMLPipelineGenerator
+from kedro_azureml_pipeline.scheduler import (
     build_job_schedule,
     build_trigger,
     resolve_schedule,
@@ -295,8 +295,8 @@ class TestScheduleCLI:
         """--dry-run should report what would be created without calling Azure."""
         from click.testing import CliRunner
 
-        from kedro_azure_ml import cli
-        from kedro_azure_ml.manager import KedroContextManager
+        from kedro_azureml_pipeline import cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
 
         create_kedro_conf_dirs(tmp_path)
 
@@ -349,8 +349,8 @@ class TestScheduleCLI:
         """--job flag should filter to only the named job."""
         from click.testing import CliRunner
 
-        from kedro_azure_ml import cli
-        from kedro_azure_ml.manager import KedroContextManager
+        from kedro_azureml_pipeline import cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
 
         create_kedro_conf_dirs(tmp_path)
 
@@ -405,8 +405,8 @@ class TestScheduleCLI:
         """Requesting a non-existent job name should error."""
         from click.testing import CliRunner
 
-        from kedro_azure_ml import cli
-        from kedro_azure_ml.manager import KedroContextManager
+        from kedro_azureml_pipeline import cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
 
         create_kedro_conf_dirs(tmp_path)
 
@@ -448,8 +448,8 @@ class TestScheduleCLI:
         """Schedule should error when no jobs section exists in config."""
         from click.testing import CliRunner
 
-        from kedro_azure_ml import cli
-        from kedro_azure_ml.manager import KedroContextManager
+        from kedro_azureml_pipeline import cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
 
         create_kedro_conf_dirs(tmp_path)
 
@@ -486,8 +486,8 @@ class TestScheduleCLI:
         """Schedule should error when a job has no schedule configured."""
         from click.testing import CliRunner
 
-        from kedro_azure_ml import cli
-        from kedro_azure_ml.manager import KedroContextManager
+        from kedro_azureml_pipeline import cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
 
         create_kedro_conf_dirs(tmp_path)
 
@@ -536,8 +536,8 @@ class TestRunCLI:
         """--dry-run should report what would be run without calling Azure."""
         from click.testing import CliRunner
 
-        from kedro_azure_ml import cli
-        from kedro_azure_ml.manager import KedroContextManager
+        from kedro_azureml_pipeline import cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
 
         create_kedro_conf_dirs(tmp_path)
 
@@ -586,8 +586,8 @@ class TestRunCLI:
         """run should ignore schedule config and run immediately."""
         from click.testing import CliRunner
 
-        from kedro_azure_ml import cli
-        from kedro_azure_ml.manager import KedroContextManager
+        from kedro_azureml_pipeline import cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
 
         create_kedro_conf_dirs(tmp_path)
 

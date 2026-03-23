@@ -1,7 +1,7 @@
 ![](assets/logo_dark.png#only-dark){width=800}
 ![](assets/logo_light.png#only-light){width=800}
 
-# Welcome to Kedro Azure ML's documentation
+# Welcome to Kedro AzureML Pipeline's documentation
 
 Kedro plugin for running Kedro pipelines on Azure ML Pipelines.
 
@@ -11,7 +11,7 @@ Kedro plugin for running Kedro pipelines on Azure ML Pipelines.
 
     ---
 
-    Install Kedro Azure ML and run your first pipeline on Azure ML
+    Install Kedro AzureML Pipeline and run your first pipeline on Azure ML
 
     Install → Configure → Run → Done
 
@@ -39,7 +39,7 @@ Kedro plugin for running Kedro pipelines on Azure ML Pipelines.
 
 ### [Getting started](pages/getting-started.md)
 
-Step-by-step guide to installing and setting up Kedro Azure ML in your project.
+Step-by-step guide to installing and setting up Kedro AzureML Pipeline in your project.
 
 - [Installation](pages/getting-started.md#installation)
 - [Configuration](pages/getting-started.md#configuration-overview)
@@ -58,8 +58,8 @@ In-depth documentation covering configuration, CLI, and advanced features.
 
 ### [Reference](pages/api-reference/)
 
-Detailed reference for the Kedro Azure ML API, including classes, functions, and configuration options.
+Detailed reference for the Kedro AzureML Pipeline API, including classes, functions, and configuration options.
 
 ## License
 
-Kedro Azure ML is open source and licensed under the [Apache-2.0 License](https://opensource.org/licenses/Apache-2.0). You are free to use, modify, and distribute this software under the terms of this license.
+Kedro AzureML Pipeline is open source and licensed under the [Apache-2.0 License](https://opensource.org/licenses/Apache-2.0). You are free to use, modify, and distribute this software under the terms of this license.

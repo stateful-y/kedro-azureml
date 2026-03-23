@@ -10,8 +10,8 @@ from azure.ai.ml.entities import (
     RecurrenceTrigger,
 )
 
-from kedro_azure_ml.client import _get_azureml_client
-from kedro_azure_ml.config import (
+from kedro_azureml_pipeline.client import _get_azureml_client
+from kedro_azureml_pipeline.config import (
     ScheduleConfig,
     WorkspaceConfig,
 )
@@ -47,8 +47,8 @@ def resolve_schedule(
 
     See Also
     --------
-    `kedro_azure_ml.config.ScheduleConfig` : The resolved configuration type.
-    `kedro_azure_ml.scheduler.build_trigger` : Next step after resolving.
+    `kedro_azureml_pipeline.config.ScheduleConfig` : The resolved configuration type.
+    `kedro_azureml_pipeline.scheduler.build_trigger` : Next step after resolving.
     """
     if isinstance(schedule_ref, ScheduleConfig):
         return schedule_ref
@@ -73,8 +73,8 @@ def build_trigger(config: ScheduleConfig) -> CronTrigger | RecurrenceTrigger:
 
     See Also
     --------
-    `kedro_azure_ml.scheduler.resolve_schedule` : Resolves config before building.
-    `kedro_azure_ml.scheduler.build_job_schedule` : Wraps the trigger into a schedule.
+    `kedro_azureml_pipeline.scheduler.resolve_schedule` : Resolves config before building.
+    `kedro_azureml_pipeline.scheduler.build_job_schedule` : Wraps the trigger into a schedule.
     """
     if config.cron:
         kwargs = {"expression": config.cron.expression, "time_zone": config.cron.time_zone}
@@ -136,8 +136,8 @@ def build_job_schedule(
 
     See Also
     --------
-    `kedro_azure_ml.scheduler.build_trigger` : Creates the trigger argument.
-    `kedro_azure_ml.scheduler.AzureMLScheduleClient` : Submits this schedule.
+    `kedro_azureml_pipeline.scheduler.build_trigger` : Creates the trigger argument.
+    `kedro_azureml_pipeline.scheduler.AzureMLScheduleClient` : Submits this schedule.
     """
     kwargs = {
         "name": name,
@@ -156,9 +156,9 @@ class AzureMLScheduleClient:
 
     See Also
     --------
-    `kedro_azure_ml.client.AzureMLPipelinesClient` : Immediate job submission.
-    `kedro_azure_ml.scheduler.build_job_schedule` : Builds schedules for this client.
-    `kedro_azure_ml.config.ScheduleConfig` : Schedule trigger configuration.
+    `kedro_azureml_pipeline.client.AzureMLPipelinesClient` : Immediate job submission.
+    `kedro_azureml_pipeline.scheduler.build_job_schedule` : Builds schedules for this client.
+    `kedro_azureml_pipeline.config.ScheduleConfig` : Schedule trigger configuration.
     """
 
     def create_or_update_schedule(

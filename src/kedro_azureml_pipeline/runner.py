@@ -10,8 +10,8 @@ from kedro.runner import SequentialRunner
 from kedro_datasets.pickle import PickleDataset
 from pluggy import PluginManager
 
-from kedro_azure_ml.datasets import AzureMLPipelineDataset
-from kedro_azure_ml.datasets.asset_dataset import AzureMLAssetDataset
+from kedro_azureml_pipeline.datasets import AzureMLPipelineDataset
+from kedro_azureml_pipeline.datasets.asset_dataset import AzureMLAssetDataset
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +28,9 @@ class AzurePipelinesRunner(SequentialRunner):
 
     See Also
     --------
-    `kedro_azure_ml.datasets.AzureMLPipelineDataset` : Dataset whose paths are rewired.
-    `kedro_azure_ml.datasets.AzureMLAssetDataset` : Versioned asset dataset.
-    `kedro_azure_ml.hooks.AzureMLLocalRunHook` : Hook that detects this runner.
+    `kedro_azureml_pipeline.datasets.AzureMLPipelineDataset` : Dataset whose paths are rewired.
+    `kedro_azureml_pipeline.datasets.AzureMLAssetDataset` : Versioned asset dataset.
+    `kedro_azureml_pipeline.hooks.AzureMLLocalRunHook` : Hook that detects this runner.
     """
 
     def __init__(

@@ -1,19 +1,19 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/stateful-y/kedro-azureml/main/docs/assets/logo_light.png">
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/stateful-y/kedro-azureml/main/docs/assets/logo_dark.png">
-    <img src="https://raw.githubusercontent.com/stateful-y/kedro-azureml/main/docs/assets/logo_light.png" alt="Kedro Azure ML">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/stateful-y/kedro-azureml-pipeline/main/docs/assets/logo_light.png">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/stateful-y/kedro-azureml-pipeline/main/docs/assets/logo_dark.png">
+    <img src="https://raw.githubusercontent.com/stateful-y/kedro-azureml-pipeline/main/docs/assets/logo_light.png" alt="Kedro AzureML Pipeline">
   </picture>
 </p>
 
-[![Python Version](https://img.shields.io/pypi/pyversions/kedro-azure-ml)](https://pypi.org/project/kedro-azure-ml/)
-[![License](https://img.shields.io/github/license/stateful-y/kedro-azure-ml)](https://github.com/stateful-y/kedro-azure-ml/blob/main/LICENSE)
-[![PyPI Version](https://img.shields.io/pypi/v/kedro-azure-ml)](https://pypi.org/project/kedro-azure-ml/)
-[![codecov](https://codecov.io/gh/stateful-y/kedro-azure-ml/branch/main/graph/badge.svg)](https://codecov.io/gh/stateful-y/kedro-azure-ml)
+[![Python Version](https://img.shields.io/pypi/pyversions/kedro-azureml-pipeline)](https://pypi.org/project/kedro-azureml-pipeline/)
+[![License](https://img.shields.io/github/license/stateful-y/kedro-azureml-pipeline)](https://github.com/stateful-y/kedro-azureml-pipeline/blob/main/LICENSE)
+[![PyPI Version](https://img.shields.io/pypi/v/kedro-azureml-pipeline)](https://pypi.org/project/kedro-azureml-pipeline/)
+[![codecov](https://codecov.io/gh/stateful-y/kedro-azureml-pipeline/branch/main/graph/badge.svg)](https://codecov.io/gh/stateful-y/kedro-azureml-pipeline)
 
-## What is Kedro Azure ML?
+## What is Kedro AzureML Pipeline?
 
-Kedro Azure ML is a plugin that enables running [Kedro](https://kedro.org/) pipelines on [Azure ML Pipelines](https://learn.microsoft.com/en-us/azure/machine-learning/concept-ml-pipelines). It translates your Kedro pipeline into an Azure ML pipeline job where each Kedro node becomes a separate step.
+Kedro AzureML Pipeline is a plugin that enables running [Kedro](https://kedro.org/) pipelines on [Azure ML Pipelines](https://learn.microsoft.com/en-us/azure/machine-learning/concept-ml-pipelines). It translates your Kedro pipeline into an Azure ML pipeline job where each Kedro node becomes a separate step.
 
 Two deployment workflows are supported, both backed by Azure ML Environments:
 
@@ -24,7 +24,7 @@ Two deployment workflows are supported, both backed by Azure ML Environments:
 
 | Feature | Description |
 |---|---|
-| **Pipeline translation** | Automatic Kedro node → Azure ML step mapping via the `compile` and `submit` CLI commands |
+| **Pipeline translation** | Automatic Kedro node → Azure ML step mapping via the `compile`, `run`, and `schedule` CLI commands |
 | **Named jobs** | Define multiple jobs in `azureml.yml`, each targeting a different pipeline, compute, or workspace |
 | **Scheduling** | Attach cron or recurrence schedules to jobs for recurring Azure ML pipeline runs |
 | **Data assets** | `AzureMLAssetDataset` for reading/writing Azure ML `uri_file` and `uri_folder` data assets |
@@ -35,13 +35,13 @@ Two deployment workflows are supported, both backed by Azure ML Environments:
 ## Installation
 
 ```bash
-pip install kedro-azure-ml
+pip install kedro-azureml-pipeline
 ```
 
 or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv add kedro-azure-ml
+uv add kedro-azureml-pipeline
 ```
 
 ## Quick start
@@ -104,16 +104,16 @@ kedro azureml compile -j training -o pipeline.yaml
 
 ## Documentation
 
-Full documentation is available at [https://kedro-azure-ml.readthedocs.io/](https://kedro-azure-ml.readthedocs.io/).
+Full documentation is available at [https://kedro-azureml-pipeline.readthedocs.io/](https://kedro-azureml-pipeline.readthedocs.io/).
 
 ## Contributing
 
 We welcome contributions, feedback, and questions:
 
-- **Report issues or request features**: [GitHub Issues](https://github.com/stateful-y/kedro-azureml/issues)
-- **Contributing guide**: [CONTRIBUTING.md](https://github.com/stateful-y/kedro-azureml/blob/main/CONTRIBUTING.md)
-- **Discussions**: [GitHub Discussions](https://github.com/stateful-y/kedro-azureml/discussions)
+- **Report issues or request features**: [GitHub Issues](https://github.com/stateful-y/kedro-azureml-pipeline/issues)
+- **Contributing guide**: [CONTRIBUTING.md](https://github.com/stateful-y/kedro-azureml-pipeline/blob/main/CONTRIBUTING.md)
+- **Discussions**: [GitHub Discussions](https://github.com/stateful-y/kedro-azureml-pipeline/discussions)
 
 ## License
 
-This project is licensed under the terms of the [Apache-2.0 License](https://github.com/stateful-y/kedro-azureml/blob/main/LICENSE).
+This project is licensed under the terms of the [Apache-2.0 License](https://github.com/stateful-y/kedro-azureml-pipeline/blob/main/LICENSE).
