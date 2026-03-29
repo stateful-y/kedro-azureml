@@ -20,6 +20,7 @@ from tests.utils import identity
 
 @pytest.fixture()
 def dummy_pipeline() -> Pipeline:
+    """Three-node linear pipeline for basic tests."""
     return pipeline([
         node(identity, inputs="input_data", outputs="i2", name="node1"),
         node(identity, inputs="i2", outputs="i3", name="node2"),
@@ -29,6 +30,7 @@ def dummy_pipeline() -> Pipeline:
 
 @pytest.fixture()
 def dummy_pipeline_compute_tag() -> Pipeline:
+    """Three-node pipeline where node1 has a ``compute-2`` tag."""
     return pipeline([
         node(
             identity,
@@ -44,6 +46,7 @@ def dummy_pipeline_compute_tag() -> Pipeline:
 
 @pytest.fixture()
 def dummy_pipeline_deterministic_tag() -> Pipeline:
+    """Three-node pipeline where node1 has a ``deterministic`` tag."""
     return pipeline([
         node(
             identity,
@@ -59,17 +62,20 @@ def dummy_pipeline_deterministic_tag() -> Pipeline:
 
 @pytest.fixture()
 def dummy_plugin_config() -> KedroAzureMLConfig:
+    """Deep copy of the default plugin config template."""
     return _CONFIG_TEMPLATE.model_copy(deep=True)
 
 
 @pytest.fixture()
 def patched_kedro_package():
+    """Patch ``PACKAGE_NAME`` to ``'tests'`` for the Kedro project discovery."""
     with patch("kedro.framework.project.PACKAGE_NAME", "tests") as patched_package:
         yield patched_package
 
 
 @pytest.fixture()
 def cli_context() -> CliContext:
+    """Minimal CLI context with ``env='base'``."""
     metadata = MagicMock()
     metadata.package_name = "tests"
     return CliContext("base", metadata)
@@ -86,6 +92,7 @@ class ExtendedMagicMock(MagicMock):
 
 @pytest.fixture
 def mock_azureml_config():
+    """Mock Azure ML workspace config with test subscription/resource values."""
     mock_config = ExtendedMagicMock()
     mock_config.subscription_id = "123"
     mock_config.resource_group = "456"
@@ -95,6 +102,7 @@ def mock_azureml_config():
 
 @pytest.fixture
 def simulated_azureml_dataset(tmp_path):
+    """Temporary directory tree mimicking Azure ML data asset layouts."""
     df = pd.DataFrame({"data": [1, 2, 3], "partition_idx": [1, 2, 3]})
 
     test_data_file = tmp_path / "test_file"
@@ -176,6 +184,8 @@ def mock_download_artifact_from_aml_uri_with_dataset(uri, destination, datastore
 
 @pytest.fixture
 def mock_azureml_fs(simulated_azureml_dataset):
+    """Patch ``download_artifact_from_aml_uri`` to copy from test fixtures."""
+
     def mock_with_dataset(uri, destination, datastore_operation):
         return mock_download_artifact_from_aml_uri_with_dataset(
             uri, destination, datastore_operation, simulated_azureml_dataset
@@ -190,6 +200,7 @@ def mock_azureml_fs(simulated_azureml_dataset):
 
 @pytest.fixture
 def mock_azureml_client(request):
+    """Parametrized mock for ``_get_azureml_client`` returning a data asset."""
     mock_data_asset = MagicMock()
     mock_data_asset.version = "1"
     mock_data_asset.path = request.param["path"]
@@ -210,6 +221,7 @@ def mock_azureml_client(request):
 
 @pytest.fixture
 def in_temp_dir(tmp_path):
+    """Change working directory to a temporary path for the test duration."""
     original_cwd = os.getcwd()
 
     os.chdir(tmp_path)
@@ -221,6 +233,7 @@ def in_temp_dir(tmp_path):
 
 @pytest.fixture
 def multi_catalog():
+    """Catalog with CSV and Parquet ``AzureMLAssetDataset`` entries."""
     csv = AzureMLAssetDataset(
         dataset={
             "type": CSVDataset,

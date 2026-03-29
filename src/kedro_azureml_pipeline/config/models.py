@@ -20,8 +20,8 @@ class WorkspaceConfig(BaseModel):
 
     See Also
     --------
-    `kedro_azureml_pipeline.config.WorkspacesConfig` : Named workspace registry.
-    `kedro_azureml_pipeline.config.KedroAzureMLConfig` : Top-level plugin configuration.
+    [WorkspacesConfig][kedro_azureml_pipeline.config.WorkspacesConfig] : Named workspace registry.
+    [KedroAzureMLConfig][kedro_azureml_pipeline.config.KedroAzureMLConfig] : Top-level plugin configuration.
     """
 
     subscription_id: str
@@ -37,8 +37,8 @@ class WorkspacesConfig(RootModel[dict[str, WorkspaceConfig]]):
 
     See Also
     --------
-    `kedro_azureml_pipeline.config.WorkspaceConfig` : Single workspace identity.
-    `kedro_azureml_pipeline.config.KedroAzureMLConfig` : Top-level plugin configuration.
+    [WorkspaceConfig][kedro_azureml_pipeline.config.WorkspaceConfig] : Single workspace identity.
+    [KedroAzureMLConfig][kedro_azureml_pipeline.config.KedroAzureMLConfig] : Top-level plugin configuration.
     """
 
     @model_validator(mode="after")
@@ -95,7 +95,7 @@ class ClusterConfig(BaseModel):
 
     See Also
     --------
-    `kedro_azureml_pipeline.config.ComputeConfig` : Named compute cluster registry.
+    [ComputeConfig][kedro_azureml_pipeline.config.ComputeConfig] : Named compute cluster registry.
     """
 
     cluster_name: str
@@ -109,8 +109,8 @@ class ComputeConfig(RootModel[dict[str, ClusterConfig]]):
 
     See Also
     --------
-    `kedro_azureml_pipeline.config.ClusterConfig` : Single cluster entry.
-    `kedro_azureml_pipeline.generator.AzureMLPipelineGenerator` : Uses compute config for node routing.
+    [ClusterConfig][kedro_azureml_pipeline.config.ClusterConfig] : Single cluster entry.
+    [AzureMLPipelineGenerator][kedro_azureml_pipeline.generator.AzureMLPipelineGenerator] : Uses compute config for node routing.
     """
 
     @model_validator(mode="after")
@@ -165,8 +165,8 @@ class ExecutionConfig(BaseModel):
 
     See Also
     --------
-    `kedro_azureml_pipeline.config.KedroAzureMLConfig` : Top-level plugin configuration.
-    `kedro_azureml_pipeline.generator.AzureMLPipelineGenerator` : Consumes execution config.
+    [KedroAzureMLConfig][kedro_azureml_pipeline.config.KedroAzureMLConfig] : Top-level plugin configuration.
+    [AzureMLPipelineGenerator][kedro_azureml_pipeline.generator.AzureMLPipelineGenerator] : Consumes execution config.
     """
 
     environment: str | None = None
@@ -252,9 +252,9 @@ class ScheduleConfig(BaseModel):
 
     See Also
     --------
-    `kedro_azureml_pipeline.config.CronScheduleConfig` : Cron trigger details.
-    `kedro_azureml_pipeline.config.RecurrenceScheduleConfig` : Recurrence trigger details.
-    `kedro_azureml_pipeline.scheduler.build_trigger` : Converts this config to Azure ML trigger.
+    [CronScheduleConfig][kedro_azureml_pipeline.config.CronScheduleConfig] : Cron trigger details.
+    [RecurrenceScheduleConfig][kedro_azureml_pipeline.config.RecurrenceScheduleConfig] : Recurrence trigger details.
+    [build_trigger][kedro_azureml_pipeline.scheduler.build_trigger] : Converts this config to Azure ML trigger.
     """
 
     cron: CronScheduleConfig | None = None
@@ -305,8 +305,8 @@ class PipelineFilterOptions(BaseModel):
 
     See Also
     --------
-    `kedro_azureml_pipeline.config.JobConfig` : Uses filter options per job.
-    `kedro_azureml_pipeline.generator.AzureMLPipelineGenerator` : Applies filters during generation.
+    [JobConfig][kedro_azureml_pipeline.config.JobConfig] : Uses filter options per job.
+    [AzureMLPipelineGenerator][kedro_azureml_pipeline.generator.AzureMLPipelineGenerator] : Applies filters during generation.
     """
 
     pipeline_name: str = "__default__"
@@ -360,9 +360,8 @@ class JobConfig(BaseModel):
 
     See Also
     --------
-    `kedro_azureml_pipeline.config.PipelineFilterOptions` : Pipeline node filtering.
-    `kedro_azureml_pipeline.config.ScheduleConfig` : Schedule trigger specification.
-    `kedro_azureml_pipeline.cli_functions.submit_scheduled_jobs` : Submits configured jobs.
+    [PipelineFilterOptions][kedro_azureml_pipeline.config.PipelineFilterOptions] : Pipeline node filtering.
+    [ScheduleConfig][kedro_azureml_pipeline.config.ScheduleConfig] : Schedule trigger specification.
     """
 
     pipeline: PipelineFilterOptions
@@ -392,10 +391,10 @@ class KedroAzureMLConfig(BaseModel):
 
     See Also
     --------
-    `kedro_azureml_pipeline.config.WorkspacesConfig` : Workspace definitions.
-    `kedro_azureml_pipeline.config.ComputeConfig` : Compute cluster definitions.
-    `kedro_azureml_pipeline.config.JobConfig` : Individual job configurations.
-    `kedro_azureml_pipeline.manager.KedroContextManager` : Loads and validates this config.
+    [WorkspacesConfig][kedro_azureml_pipeline.config.WorkspacesConfig] : Workspace definitions.
+    [ComputeConfig][kedro_azureml_pipeline.config.ComputeConfig] : Compute cluster definitions.
+    [JobConfig][kedro_azureml_pipeline.config.JobConfig] : Individual job configurations.
+    [KedroContextManager][kedro_azureml_pipeline.manager.KedroContextManager] : Loads and validates this config.
     """
 
     workspace: WorkspacesConfig
