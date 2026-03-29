@@ -146,6 +146,6 @@ You have submitted a Kedro pipeline to Azure ML managed compute. Along the way, 
 
 ## Next steps
 
-- [How to schedule pipelines](../how-to/schedule-pipelines.md) - set up recurring cron and recurrence schedules
-- [Configuration reference](../reference/configuration.md) - all `azureml.yml` fields
-- [Architecture overview](../explanation/architecture.md) - how the plugin translates Kedro to Azure ML
+- [How to schedule pipelines](../how-to/schedule-pipelines.md) for recurring cron and recurrence schedules
+- [Configuration reference](../reference/configuration.md) for all `azureml.yml` fields
+- [Architecture overview](../explanation/architecture.md) for how the plugin translates Kedro to Azure ML

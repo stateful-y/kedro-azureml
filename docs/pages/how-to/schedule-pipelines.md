@@ -101,5 +101,5 @@ The `-w` flag overrides the workspace for the current invocation. It does not mo
 
 ## See also
 
-- [Configuration reference](../reference/configuration.md#jobs) - full `schedule` field documentation
-- [CLI reference](../reference/cli.md#kedro-azureml-schedule) - all flags for `kedro azureml schedule`
+- [Configuration reference](../reference/configuration.md#jobs) for the full `schedule` field documentation
+- [CLI reference](../reference/cli.md#kedro-azureml-schedule) for all `kedro azureml schedule` flags

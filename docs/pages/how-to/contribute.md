@@ -190,5 +190,5 @@ Serve locally:
 
 The CI pipeline uses two tiers:
 
-1. **Fast tests**: Run on Python 3.11 and 3.13. On draft PRs - Ubuntu only. On ready PRs and `main` - Ubuntu, Windows, and macOS.
+1. **Fast tests**: Run on Python 3.11 and 3.13. On draft PRs, Ubuntu only. On ready PRs and `main`, Ubuntu, Windows, and macOS.
 2. **Full test suite**: Runs all tests (fast + slow + integration) on Ubuntu across Python 3.11-3.13 when the PR is not a draft or on `main`. Includes coverage reporting on the minimum supported Python version.

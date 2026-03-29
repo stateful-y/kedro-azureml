@@ -64,7 +64,7 @@ Ensure the name includes a valid version tag, e.g. `my-env@latest` or `my-env:3`
 
 **Cause**: The file is excluded from the code upload, or `code_directory` is set to `null`.
 
-**Fix**: Check `.amlignore` - any file listed there is excluded from upload. Remove it if the file is needed. Ensure `code_directory: "."` is set in `azureml.yml` to upload the full project.
+**Fix**: Check `.amlignore` because any file listed there is excluded from upload. Remove it if the file is needed. Ensure `code_directory: "."` is set in `azureml.yml` to upload the full project.
 
 ---
 
@@ -130,5 +130,5 @@ Search [GitHub Issues](https://github.com/stateful-y/kedro-azureml-pipeline/issu
 
 ## See also
 
-- [Configuration reference](../reference/configuration.md) - all `azureml.yml` fields
-- [Architecture overview](../explanation/architecture.md) - how the plugin works internally
+- [Configuration reference](../reference/configuration.md) for all `azureml.yml` fields
+- [Architecture overview](../explanation/architecture.md) for how the plugin works internally

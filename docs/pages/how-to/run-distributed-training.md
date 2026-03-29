@@ -72,10 +72,10 @@ num_training_nodes: 4
 
 ## How it works
 
-During local runs, `@distributed_job` has no effect - the function runs normally. During Azure ML runs, the pipeline generator wraps the step in a distributed job configuration. See the [architecture overview](../explanation/architecture.md) for details on pipeline compilation.
+During local runs, `@distributed_job` has no effect and the function runs normally. During Azure ML runs, the pipeline generator wraps the step in a distributed job configuration. See the [architecture overview](../explanation/architecture.md) for details on pipeline compilation.
 
 ## See also
 
-- [Architecture overview](../explanation/architecture.md) - how the pipeline generator translates Kedro nodes to Azure ML steps
-- [`distributed_job` API](../reference/api.md) - decorator parameter reference
-- [`Framework` API](../reference/api.md) - supported framework values
+- [Architecture overview](../explanation/architecture.md) for how the pipeline generator translates Kedro nodes to Azure ML steps
+- [`distributed_job` API](../reference/api.md) for the decorator parameter reference
+- [`Framework` API](../reference/api.md) for supported framework values

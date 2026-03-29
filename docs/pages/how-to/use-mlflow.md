@@ -46,6 +46,6 @@ After a run completes, open Azure ML Studio and navigate to **Jobs** then your e
 
 ## See also
 
-- [Architecture overview](../explanation/architecture.md#mlflow-coordination) - how the plugin coordinates MLflow during remote execution
-- [kedro-mlflow documentation](https://kedro-mlflow.readthedocs.io/) - full kedro-mlflow setup and usage
-- [Azure ML native MLflow integration](https://learn.microsoft.com/en-us/azure/machine-learning/how-to-use-mlflow-cli-runs) - Azure ML's MLflow tracking backend
+- [Architecture overview](../explanation/architecture.md#mlflow-coordination) for how the plugin coordinates MLflow during remote execution
+- [kedro-mlflow documentation](https://kedro-mlflow.readthedocs.io/) for full setup and usage
+- [Azure ML native MLflow integration](https://learn.microsoft.com/en-us/azure/machine-learning/how-to-use-mlflow-cli-runs) for Azure ML's MLflow tracking backend

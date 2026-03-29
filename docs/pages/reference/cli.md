@@ -12,8 +12,8 @@ kedro azureml init
 
 Initializes the plugin in the current Kedro project. Creates:
 
-- `conf/base/azureml.yml` - configuration file with placeholder values
-- `.amlignore` - file exclusion list for code upload
+- `conf/base/azureml.yml`: configuration file with placeholder values
+- `.amlignore`: file exclusion list for code upload
 
 No flags.
 

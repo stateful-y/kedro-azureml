@@ -76,5 +76,5 @@ kedro azureml run -j training --env prod
 
 ## See also
 
-- [Configuration reference](../reference/configuration.md#workspace) - full workspace field documentation
-- [CLI reference](../reference/cli.md#kedro-azureml-run) - `-w` flag and other run options
+- [Configuration reference](../reference/configuration.md#workspace) for the full workspace field documentation
+- [CLI reference](../reference/cli.md#kedro-azureml-run) for the `-w` flag and other run options

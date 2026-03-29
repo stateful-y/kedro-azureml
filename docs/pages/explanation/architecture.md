@@ -55,7 +55,7 @@ When `kedro-mlflow` is installed, the pipeline generator injects `KEDRO_AZUREML_
 
 ## Scheduling
 
-The `AzureMLScheduler` translates the `schedule` field on a job definition into an Azure ML `JobSchedule` object, which Azure ML stores and triggers independently of the CLI. A cron or recurrence trigger fires the pipeline directly in the Azure ML service - no local process needs to be running.
+The `AzureMLScheduler` translates the `schedule` field on a job definition into an Azure ML `JobSchedule` object, which Azure ML stores and triggers independently of the CLI. A cron or recurrence trigger fires the pipeline directly in the Azure ML service, so no local process needs to be running.
 
 ## Configuration loading
 

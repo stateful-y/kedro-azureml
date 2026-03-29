@@ -24,7 +24,7 @@ model_inputs:
     filepath: "data.parquet"
 ```
 
-The `azureml_dataset` field is the name of the Data Asset in Azure ML. The `dataset` block is an ordinary Kedro dataset definition - any type that accepts a `filepath` argument works here.
+The `azureml_dataset` field is the name of the Data Asset in Azure ML. The `dataset` block is an ordinary Kedro dataset definition, so any type that accepts a `filepath` argument works here.
 
 ### Use `uri_file` for single-file assets
 
@@ -70,7 +70,7 @@ model_inputs:
 
 ## Use `AzureMLPipelineDataset` for inter-step data passing
 
-`AzureMLPipelineDataset` passes data between Kedro nodes that run as separate Azure ML pipeline steps. It does not reference a named Azure ML Data Asset - instead, Azure ML mounts a temporary storage path between steps. Use this for intermediate data that does not need to be versioned or registered as an asset.
+`AzureMLPipelineDataset` passes data between Kedro nodes that run as separate Azure ML pipeline steps. Rather than referencing a named Azure ML Data Asset, Azure ML mounts a temporary storage path between steps. Use this for intermediate data that does not need to be versioned or registered as an asset.
 
 ```yaml
 intermediate_features:
@@ -95,6 +95,6 @@ During local runs, `AzureMLAssetDataset` downloads the asset to `root_dir` on fi
 
 ## See also
 
-- [Configuration reference](../reference/configuration.md) - workspace and credential settings
-- [`AzureMLAssetDataset` API](../reference/api.md) - full parameter reference
-- [`AzureMLPipelineDataset` API](../reference/api.md) - full parameter reference
+- [Configuration reference](../reference/configuration.md) for workspace and credential settings
+- [`AzureMLAssetDataset` API](../reference/api.md) for the full parameter reference
+- [`AzureMLPipelineDataset` API](../reference/api.md) for the full parameter reference
