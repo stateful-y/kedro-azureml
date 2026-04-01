@@ -161,6 +161,7 @@ nav:
     - API: pages/reference/api.md
   - Explanation:
     - pages/explanation/index.md
+    - Concepts: pages/explanation/concepts.md
     - Architecture: pages/explanation/architecture.md
     - Data Flow Between Steps: pages/explanation/data-flow.md
     - Hook Lifecycle: pages/explanation/hook-lifecycle.md

@@ -1,9 +1,12 @@
+import importlib.metadata as _ilmd
 import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import kedro.framework.session.session as _kedro_session_mod
 import pandas as pd
 import pytest
+from kedro.framework import project as _kedro_project
 from kedro.io import DataCatalog
 from kedro.io.core import Version
 from kedro.pipeline import Pipeline, node, pipeline
@@ -15,7 +18,87 @@ from kedro_azureml_pipeline.config import (
 )
 from kedro_azureml_pipeline.datasets import AzureMLAssetDataset
 from kedro_azureml_pipeline.utils import CliContext
+from tests.scenarios.project_factory import KedroProjectOptions, build_kedro_project_scenario
 from tests.utils import identity
+
+
+@pytest.fixture(autouse=True)
+def _disable_kedro_plugin_entrypoints(monkeypatch):
+    """Prevent system-installed Kedro plugin hooks from loading during tests.
+
+    Reads the project's ``ALLOWED_HOOK_PLUGINS`` setting to determine which
+    plugin distributions (by name) are permitted. All others are filtered out.
+    """
+    _PLUGIN_HOOKS = "kedro.hooks"
+
+    def _wrapped_register(*args, **kwargs):
+        hook_manager = args[0] if args else kwargs.get("hook_manager")
+
+        # Try reading from the Kedro project settings first; fall back to
+        # the test-local settings module when the project is not fully
+        # configured yet (e.g. when only PACKAGE_NAME is patched).
+        proj_allowed = getattr(_kedro_project.settings, "ALLOWED_HOOK_PLUGINS", None)
+        if proj_allowed is None:
+            try:
+                from tests.settings import ALLOWED_HOOK_PLUGINS
+
+                proj_allowed = ALLOWED_HOOK_PLUGINS
+            except (ImportError, AttributeError):
+                proj_allowed = ()
+
+        allowed_set = {str(p).strip() for p in proj_allowed if str(p).strip()}
+
+        if not allowed_set:
+            return hook_manager
+
+        def _filtered_loader(group: str):
+            try:
+                all_entry_points = _ilmd.entry_points()
+                if hasattr(all_entry_points, "select"):
+                    entry_points = list(all_entry_points.select(group=group))
+                else:
+                    entry_points = list(all_entry_points.get(group, []))
+            except Exception:
+                entry_points = []
+
+            for entry_point in entry_points:
+                try:
+                    dist_name = getattr(getattr(entry_point, "dist", None), "name", None)
+                    if dist_name and dist_name in allowed_set:
+                        plugin = entry_point.load()
+                        hook_manager.register(plugin, name=getattr(entry_point, "name", None))
+                except Exception:
+                    continue
+
+            return hook_manager
+
+        hook_manager.load_setuptools_entrypoints = _filtered_loader
+        _filtered_loader(_PLUGIN_HOOKS)
+
+    monkeypatch.setattr(
+        _kedro_session_mod,
+        "_register_hooks_entry_points",
+        _wrapped_register,
+        raising=False,
+    )
+
+
+@pytest.fixture(scope="session")
+def temp_directory(tmpdir_factory):
+    """Session-scoped temporary directory for all test projects."""
+    return tmpdir_factory.mktemp("session_temp_dir")
+
+
+@pytest.fixture(scope="session")
+def project_scenario_factory(temp_directory):
+    """Return a callable that builds Kedro project variants in tmp dirs."""
+
+    def _factory(kedro_project_options: KedroProjectOptions, project_name: str | None = None) -> KedroProjectOptions:
+        return build_kedro_project_scenario(
+            temp_directory=temp_directory, options=kedro_project_options, project_name=project_name
+        )
+
+    return _factory
 
 
 @pytest.fixture()

@@ -233,14 +233,14 @@ exclude = ["CHANGELOG.md", "site", "htmlcov", ".nox", ".venv"]
 # Pre-existing type issues in Azure ML SDK integration & Click parameter coercion.
 # TODO: Gradually fix and re-enable these rules.
 [tool.ty.rules]
-invalid-assignment = "ignore"
-invalid-argument-type = "ignore"
-invalid-parameter-default = "ignore"
-invalid-return-type = "ignore"
-unresolved-attribute = "ignore"
-unresolved-import = "ignore"
-no-matching-overload = "ignore"
-invalid-method-override = "ignore"
+invalid-assignment = "warn"
+invalid-argument-type = "warn"
+invalid-parameter-default = "warn"
+invalid-return-type = "warn"
+unresolved-attribute = "warn"
+unresolved-import = "warn"
+no-matching-overload = "warn"
+invalid-method-override = "warn"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
