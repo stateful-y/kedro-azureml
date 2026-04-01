@@ -126,6 +126,8 @@ ignore = [
     "E501",    # line too long (handled by formatter)
     "B008",    # do not perform function calls in argument defaults
     "PLC0415", # import outside top-level (lazy imports used intentionally)
+    "SIM102",  # collapsible if (clarity over brevity)
+    "SIM105",  # contextlib.suppress (comments on except clauses preferred)
     "PLR0913", # too many args in func def
     "PLR0915", # too many statements
     "PLR0912", # too many branches
@@ -178,6 +180,16 @@ addopts = [
 markers = [
     "integration: marks tests as integration tests that run subprocesses (deselect with '-m \"not integration\"')",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+filterwarnings = [
+    # Ignore Pydantic v2 deprecation warnings during tests
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+    "ignore::pydantic.warnings.PydanticDeprecatedSince212",
+    # Silence Kedro framework warnings about missing pipelines in test scenarios
+    "ignore:Your project does not contain any pipelines with nodes:UserWarning:kedro.framework.cli.starters",
+    # Ignore azure-ai-ml SDK deprecation warnings
+    "ignore::DeprecationWarning:azure",
+    "ignore::FutureWarning:azure",
 ]
 
 [tool.coverage.paths]
@@ -241,6 +253,11 @@ unresolved-attribute = "warn"
 unresolved-import = "warn"
 no-matching-overload = "warn"
 invalid-method-override = "warn"
+not-subscriptable = "warn"
+call-non-callable = "warn"
+unsupported-operator = "warn"
+missing-argument = "warn"
+invalid-type-form = "warn"
 
 [tool.commitizen]
 name = "cz_conventional_commits"

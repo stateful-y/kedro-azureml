@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   versions:
-    name: Test ${{ matrix.python-version }} | ${{ matrix.kedro_spec }} | ${{ matrix.azureml_spec }} on ${{ matrix.os }}
+    name: Test ${{ matrix.python-version }} | ${{ matrix.kedro_spec }} | ${{ matrix.azureml_spec }} | mlflow=${{ matrix.with_mlflow }} on ${{ matrix.os }}
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -28,6 +28,7 @@ jobs:
         os: [ubuntu-latest]
         kedro_spec: ["kedro>=1.0,<2.0"]
         azureml_spec: ["azure-ai-ml>=1.2,<1.20", "azure-ai-ml>=1.20"]
+        with_mlflow: [false, true]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -49,6 +50,6 @@ jobs:
       - name: Run versioned tests
         shell: bash
         run: |
-          nox -s "test_versions-${{ matrix.python-version }}(azureml_spec='${{ matrix.azureml_spec }}', kedro_spec='${{ matrix.kedro_spec }}')"
+          nox -s "test_versions-${{ matrix.python-version }}(azureml_spec='${{ matrix.azureml_spec }}', kedro_spec='${{ matrix.kedro_spec }}', with_mlflow=${{ matrix.with_mlflow }})"
         env:
           PYTEST_XDIST_AUTO_NUM_WORKERS: 0

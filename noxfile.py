@@ -189,16 +189,19 @@ def test_compat(session: nox.Session) -> None:
 @nox.session(python=PYTHON_VERSIONS, venv_backend="uv")
 @nox.parametrize("kedro_spec", KEDRO_SPECS)
 @nox.parametrize("azureml_spec", AZUREML_SPECS)
-def test_versions(session: nox.Session, azureml_spec: str, kedro_spec: str) -> None:
+@nox.parametrize("with_mlflow", [False, True])
+def test_versions(session: nox.Session, azureml_spec: str, kedro_spec: str, with_mlflow: bool) -> None:
     """Run the test suite across a matrix of Kedro and azure-ai-ml versions."""
-    session.run_install(
+    sync_args = [
         "uv",
         "sync",
         "--no-default-groups",
         "--group",
         "tests",
-        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
-    )
+    ]
+    if with_mlflow:
+        sync_args += ["--extra", "mlflow"]
+    session.run_install(*sync_args, env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location})
 
     session.run_install(
         "uv",
