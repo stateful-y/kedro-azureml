@@ -1,6 +1,15 @@
 # Changelog
 
-## [Unreleased]
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+
+## [0.1.0-alpha.1] - 2026-04-01
+
+This **minor release** includes 1 commit.
+
 
 ### Features
 
@@ -19,10 +28,7 @@
 - `kedro azureml run` is replaced by `kedro azureml run -j <job>` (immediate execution) and `kedro azureml schedule -j <job>` (persistent schedules). `kedro azureml compile` now requires `-j <job>`. `--subscription-id` replaced by `--workspace`. by [@gtauzin](https://github.com/gtauzin)
 - Blob storage removal: `KedroAzureRunnerDataset`, `KedroAzureRunnerDistributedDataset`, `BlobStorageDataPassing`, `KedroAzureRunnerConfig`, and `runner_dataset.py` module deleted. Pipeline data passing via `AzureMLPipelineDataset` is now the only mode. by [@gtauzin](https://github.com/gtauzin)
 - Removed `kedro azureml run` command and all its options (`--display-name`, `--compute-name`, `--experiment-name`, `-p`/`--pipeline`, `--wait-for-completion`, `--on-job-scheduled`). by [@gtauzin](https://github.com/gtauzin)
-- Removed `init` arguments: `-a`/`--storage-account-name`, `-c`/`--storage-container`, `--use-pipeline-data-passing`, and positional `experiment_name`. by [@gtauzin](https://github.com/gtauzin)
 - Removed deprecated `docker` config section; environment configuration now uses `execution.environment`. by [@gtauzin](https://github.com/gtauzin)
-- Removed constants: `KEDRO_AZURE_BLOB_TEMP_DIR_NAME`, `KEDRO_AZURE_RUNNER_CONFIG`, `KEDRO_AZURE_RUNNER_DATASET_TIMEOUT`. by [@gtauzin](https://github.com/gtauzin)
-- Removed dependencies: `adlfs` and `backoff`. by [@gtauzin](https://github.com/gtauzin)
 - Removed deprecated SDK v1 dataset stubs (`AzureMLPandasDataset`, `AzureMLFileDataset`) and `v1_datasets` module. by [@gtauzin](https://github.com/gtauzin)
 - Migrated project following the `stateful-y/python-package-copier` template. by [@gtauzin](https://github.com/gtauzin)
 - `kedro azureml init` no longer accepts positional arguments or `--aml-env`. It generates `conf/base/azureml.yml` with placeholder values to be filled in manually. by [@gtauzin](https://github.com/gtauzin)
@@ -30,5 +36,16 @@
 ### Documentation
 
 - Migrated documentation from Sphinx (RST) to MkDocs with Material theme. by [@gtauzin](https://github.com/gtauzin)
-- Rewrote all documentation pages: getting started, user guide, API reference, and contributing guide. by [@gtauzin](https://github.com/gtauzin)
+- Rewrote all documentation pages based on diataxis approach: getting started, user guide, API reference, and contributing guide. by [@gtauzin](https://github.com/gtauzin)
 - Added NumPy-style docstrings to all public modules, classes, and functions (interrogate coverage at 100%). by [@gtauzin](https://github.com/gtauzin)
+
+### Contributors
+
+Thanks to all contributors for this release:
+- @gtauzin
+
+---
+
+## [`kedro-azureml` v1.0.0]
+
+This project is a fork of [`kedro-azureml`](https://github.com/getindata/kedro-azureml) originally created by [GetInData | Part of Xebia](https://github.com/getindata).
