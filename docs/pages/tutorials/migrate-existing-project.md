@@ -16,7 +16,7 @@ By the end, you will have your existing project running on Azure ML and understa
 
     [Azure ML Pipelines](https://learn.microsoft.com/en-us/azure/machine-learning/concept-ml-pipelines) let you run pipeline steps on managed cloud compute. You will need an Azure subscription, a workspace, and a compute cluster.
 
-## Step 1 - Install the plugin
+## Step 1: Install the plugin
 
 From your project root:
 
@@ -41,16 +41,16 @@ You should see output starting with:
 Usage: kedro azureml [OPTIONS] COMMAND [ARGS]...
 ```
 
-## Step 2 - Understand the hook system
+## Step 2: Understand the hook system
 
 Kedro uses a hook system that lets plugins tap into the pipeline lifecycle: before and after catalogs load, before and after each node runs, and so on. The plugin provides two hooks:
 
 - [`AzureMLLocalRunHook`][kedro_azureml_pipeline.hooks.AzureMLLocalRunHook] intercepts catalog creation so that Azure ML dataset entries resolve to the right paths whether you are running locally or on cloud compute.
 - [`MlflowAzureMLHook`][kedro_azureml_pipeline.hooks.MlflowAzureMLHook] coordinates with [Kedro-MLflow](https://kedro-mlflow.readthedocs.io/) so that MLflow tracking calls are routed to your Azure ML workspace's tracking endpoint during remote runs.
 
-Both hooks are auto-registered via Python entry points when you install the package. You do not need to add them to `HOOKS` in `settings.py` - Kedro discovers them automatically.
+Both hooks are auto-registered via Python entry points when you install the package. You do not need to add them to `HOOKS` in `settings.py` as Kedro discovers them automatically.
 
-## Step 3 - Initialize the configuration
+## Step 3: Initialize the configuration
 
 ```bash
 kedro azureml init
@@ -63,7 +63,7 @@ Creating conf/base/azureml.yml...
 Creating .amlignore...
 ```
 
-## Step 4 - Configure your workspace
+## Step 4: Configure your workspace
 
 Open `conf/base/azureml.yml` and fill in your Azure ML details:
 
@@ -91,7 +91,7 @@ The `execution.code_directory` tells the plugin which folder to upload as the co
 
     In the [Azure Portal](https://portal.azure.com/), open your Azure ML workspace. The **Overview** page shows the subscription ID, resource group, and workspace name. Compute clusters are listed under **Manage > Compute > Compute clusters**.
 
-## Step 5 - Update your catalog
+## Step 5: Update your catalog
 
 This is the most important conceptual step. When Kedro runs locally, each node reads and writes data through the catalog using local file paths. When the plugin submits your pipeline to Azure ML, each node runs as a separate container on cloud compute so the nodes can no longer share a local filesystem.
 
@@ -134,7 +134,7 @@ model_inputs:
 
     Only wrap datasets that pass data between separate pipeline steps or reference Azure ML Data Assets.
 
-## Step 6 - Define a job
+## Step 6: Define a job
 
 A job tells the plugin which Kedro pipeline to submit and where to run it. Add a `jobs` section to `conf/base/azureml.yml`:
 
@@ -166,7 +166,7 @@ jobs:
 
 Each job inherits the `__default__` workspace and compute unless you override them explicitly.
 
-## Step 7 - Verify locally
+## Step 7: Verify locally
 
 Before submitting to Azure ML, let's confirm your project still runs locally with the new dataset wrappers:
 
@@ -178,7 +178,7 @@ The pipeline should complete exactly as before. This is the key insight: [`Azure
 
 If this fails, the issue is in the catalog changes (most likely a `filepath` that needs adjusting), not the plugin itself.
 
-## Step 8 - Submit to Azure ML
+## Step 8: Submit to Azure ML
 
 Now let's send the pipeline to the cloud:
 

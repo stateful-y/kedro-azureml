@@ -93,6 +93,6 @@ If you only need to submit jobs and track experiments, `AzureML Data Scientist` 
 
 ## See also
 
-- [How to deploy from CI/CD](deploy-from-cicd.md) - full CI/CD pipeline setup including callbacks and batch submission
-- [Troubleshoot](troubleshoot.md) - broader troubleshooting guide
-- [Configuration reference](../reference/configuration.md) - workspace configuration fields
+- [How to deploy from CI/CD](deploy-from-cicd.md): full CI/CD pipeline setup including callbacks and batch submission
+- [Troubleshoot](troubleshoot.md): broader troubleshooting guide
+- [Configuration reference](../reference/configuration.md): workspace configuration fields

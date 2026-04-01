@@ -5,10 +5,6 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
 
-# ---------------------------------------------------------------------------
-# Workspace models
-# ---------------------------------------------------------------------------
-
 
 class WorkspaceConfig(BaseModel):
     """Azure ML workspace identity.
@@ -91,11 +87,6 @@ class WorkspacesConfig(RootModel[dict[str, WorkspaceConfig]]):
         return self.root["__default__"]
 
 
-# ---------------------------------------------------------------------------
-# Compute models
-# ---------------------------------------------------------------------------
-
-
 class ClusterConfig(BaseModel):
     """Single compute cluster reference.
 
@@ -163,11 +154,6 @@ class ComputeConfig(RootModel[dict[str, ClusterConfig]]):
         return self.root["__default__"]
 
 
-# ---------------------------------------------------------------------------
-# Execution models
-# ---------------------------------------------------------------------------
-
-
 class ExecutionConfig(BaseModel):
     """Code packaging and execution settings for Azure ML.
 
@@ -194,11 +180,6 @@ class ExecutionConfig(BaseModel):
         default=None, description="Local directory to upload as a code snapshot, or None to disable code upload."
     )
     working_directory: str | None = Field(default=None, description="Working directory inside the compute container.")
-
-
-# ---------------------------------------------------------------------------
-# Schedule models
-# ---------------------------------------------------------------------------
 
 
 class CronScheduleConfig(BaseModel):
@@ -318,11 +299,6 @@ class ScheduleConfig(BaseModel):
         return self
 
 
-# ---------------------------------------------------------------------------
-# Pipeline and Job models
-# ---------------------------------------------------------------------------
-
-
 class PipelineFilterOptions(BaseModel):
     """Kedro pipeline filter options for selecting nodes.
 
@@ -437,11 +413,6 @@ class JobConfig(BaseModel):
     description: str | None = Field(default=None, description="Human-readable job description.")
 
 
-# ---------------------------------------------------------------------------
-# Top-level config
-# ---------------------------------------------------------------------------
-
-
 class KedroAzureMLConfig(BaseModel):
     """Top-level plugin configuration loaded from ``azureml.yml``.
 
@@ -501,10 +472,6 @@ class KedroAzureMLConfig(BaseModel):
     )
     jobs: dict[str, JobConfig] = Field(default_factory=dict, description="Named job definitions.")
 
-
-# ---------------------------------------------------------------------------
-# Config template
-# ---------------------------------------------------------------------------
 
 CONFIG_TEMPLATE_YAML = """
 workspace:

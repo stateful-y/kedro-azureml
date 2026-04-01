@@ -38,7 +38,7 @@ Follow the prompts, then install the project dependencies:
     uv sync
     ```
 
-## Step 2 - Install the plugin
+## Step 2: Install the plugin
 
 === "pip"
     ```bash
@@ -80,13 +80,13 @@ Creating .amlignore...
 
 Notice that two new files appeared:
 
-- `conf/base/azureml.yml` - plugin settings (workspace, compute, jobs)
-- `.amlignore` - controls which files are excluded from code uploads (similar to `.gitignore`)
+- `conf/base/azureml.yml`: plugin settings (workspace, compute, jobs)
+- `.amlignore`: controls which files are excluded from code uploads (similar to `.gitignore`)
 
 The plugin supports two deployment flows. Choose the one that fits your setup:
 
-- **Code upload** - the plugin uploads a snapshot of your project to Azure ML on every run. Simplest way to get started.
-- **Pre-built environment** - your code is already installed inside the Azure ML environment (Docker image). Faster for large projects since nothing is uploaded.
+- **Code upload**: the plugin uploads a snapshot of your project to Azure ML on every run. Simplest way to get started.
+- **Pre-built environment**: your code is already installed inside the Azure ML environment (Docker image). Faster for large projects since nothing is uploaded.
 
 ## Step 4: Configure your workspace
 

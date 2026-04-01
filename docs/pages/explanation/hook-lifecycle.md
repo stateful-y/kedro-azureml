@@ -73,6 +73,6 @@ This is the same pattern the plugin's own [`AzureMLLocalRunHook`][kedro_azureml_
 
 ## Connections
 
-- [Architecture overview](architecture.md) - how hooks fit into the broader plugin design
-- [How to use MLflow](../how-to/use-mlflow.md) - practical setup for the kedro-mlflow integration
+- [Architecture overview](architecture.md): how hooks fit into the broader plugin design
+- [How to use MLflow](../how-to/use-mlflow.md): practical setup for the kedro-mlflow integration
 - [API reference](../reference/api.md): [`AzureMLLocalRunHook`][kedro_azureml_pipeline.hooks.AzureMLLocalRunHook] and [`MlflowAzureMLHook`][kedro_azureml_pipeline.hooks.MlflowAzureMLHook] class docs
