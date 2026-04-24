@@ -153,6 +153,9 @@ jobs:
     workspace: "prod"
     description: "Run the training pipeline on GPU cluster"
     schedule: "business_hours"
+    retry:
+      max_retries: 3
+      timeout: 3600
 ```
 
 | Field | Default | Description |
@@ -163,7 +166,23 @@ jobs:
 | `display_name` | `null` | Display name shown in Azure ML Studio |
 | `compute` | `null` | Named compute entry; falls back to `__default__` |
 | `schedule` | `null` | Inline `ScheduleConfig`, named schedule string, or `null` for ad-hoc |
+| `retry` | `null` | Retry settings applied to every step (see below) |
 | `description` | `null` | Human-readable job description |
+
+### `retry`
+
+Optional retry settings applied to every command step in the job. Maps to [`azure.ai.ml.entities.RetrySettings`](https://learn.microsoft.com/en-us/python/api/azure-ai-ml/azure.ai.ml.entities.retrysettings).
+
+```yaml
+retry:
+  max_retries: 3
+  timeout: 3600
+```
+
+| Field | Default | Description |
+|---|---|---|
+| `max_retries` | required | Maximum number of retry attempts for failed steps (must be >= 1) |
+| `timeout` | `null` | Per-attempt timeout in seconds, or `null` for no limit |
 
 ### `pipeline` filter options
 

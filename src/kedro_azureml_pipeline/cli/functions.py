@@ -303,6 +303,7 @@ def compile_job_pipelines(
                 filter_options=pipeline_opts,
                 mlflow_run_name=mlflow_run_name,
                 experiment_name=job_experiment_name,
+                retry_config=job_config.retry,
             )
             az_pipeline = generator.generate()
 
@@ -385,6 +386,7 @@ def _prepare_jobs(
                 filter_options=pipeline_opts,
                 mlflow_run_name=mlflow_run_name,
                 experiment_name=job_experiment_name,
+                retry_config=job_config.retry,
             )
             pipeline_job = generator.generate()
 
