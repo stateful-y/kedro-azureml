@@ -22,6 +22,7 @@ from kedro_azureml_pipeline.config import (
 )
 from kedro_azureml_pipeline.generator import AzureMLPipelineGenerator
 from kedro_azureml_pipeline.scheduler import (
+    AzureMLScheduleClient,
     build_job_schedule,
     build_trigger,
     resolve_schedule,
@@ -287,6 +288,26 @@ class TestScheduler:
         )
         assert isinstance(schedule, JobSchedule)
         assert schedule.name == "test_schedule"
+
+    def test_delete_schedule_not_found_is_noop(self):
+        from azure.core.exceptions import ResourceNotFoundError
+
+        from kedro_azureml_pipeline.client import _get_azureml_client
+
+        mock_ml_client = MagicMock()
+        mock_ml_client.schedules.begin_disable.side_effect = ResourceNotFoundError("not found")
+
+        with patch(
+            "kedro_azureml_pipeline.scheduler._get_azureml_client",
+        ) as mock_get_client:
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_ml_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            client = AzureMLScheduleClient()
+            # Should not raise
+            client.delete_schedule("nonexistent", MagicMock())
+
+        mock_ml_client.schedules.begin_delete.assert_not_called()
 
 
 class TestScheduleCLI:
@@ -701,6 +722,155 @@ class TestScheduleCLI:
             )
             assert result.exit_code != 0
             assert "no schedule configured" in result.output
+
+
+class TestScheduleDeleteCLI:
+    """``kedro azureml schedule --delete`` CLI integration."""
+
+    def test_delete_dry_run(
+        self,
+        dummy_plugin_config,
+        patched_kedro_package,
+        cli_context,
+        tmp_path,
+    ):
+        """--delete --dry-run should preview without calling Azure."""
+        from click.testing import CliRunner
+
+        import kedro_azureml_pipeline.cli.commands as cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
+
+        create_kedro_conf_dirs(tmp_path)
+        dummy_plugin_config.jobs = {
+            "test_job": JobConfig(
+                pipeline=PipelineFilterOptions(pipeline_name="__default__"),
+            ),
+        }
+
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+
+        with (
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch.object(Path, "cwd", return_value=tmp_path),
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                cli.schedule,
+                ["--delete", "--dry-run", "-j", "test_job"],
+                obj=cli_context,
+            )
+            assert result.exit_code == 0, result.output
+            assert "[DRY RUN]" in result.output
+            assert "test_job" in result.output
+
+    def test_delete_succeeds(
+        self,
+        dummy_plugin_config,
+        patched_kedro_package,
+        cli_context,
+        tmp_path,
+    ):
+        """--delete should call delete_schedule and report success."""
+        from click.testing import CliRunner
+
+        import kedro_azureml_pipeline.cli.commands as cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
+        from kedro_azureml_pipeline.scheduler import AzureMLScheduleClient
+
+        create_kedro_conf_dirs(tmp_path)
+        dummy_plugin_config.jobs = {
+            "test_job": JobConfig(
+                pipeline=PipelineFilterOptions(pipeline_name="__default__"),
+            ),
+        }
+
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+
+        with (
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch.object(Path, "cwd", return_value=tmp_path),
+            patch.object(AzureMLScheduleClient, "delete_schedule") as mock_delete,
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                cli.schedule,
+                ["--delete", "-j", "test_job"],
+                obj=cli_context,
+            )
+            assert result.exit_code == 0, result.output
+            assert "deleted" in result.output
+            mock_delete.assert_called_once()
+
+    def test_delete_failure_exit_code(
+        self,
+        dummy_plugin_config,
+        patched_kedro_package,
+        cli_context,
+        tmp_path,
+    ):
+        """When deletion fails, exit code is non-zero."""
+        from click.testing import CliRunner
+
+        import kedro_azureml_pipeline.cli.commands as cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
+        from kedro_azureml_pipeline.scheduler import AzureMLScheduleClient
+
+        create_kedro_conf_dirs(tmp_path)
+        dummy_plugin_config.jobs = {
+            "test_job": JobConfig(
+                pipeline=PipelineFilterOptions(pipeline_name="__default__"),
+            ),
+        }
+
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+
+        with (
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch.object(Path, "cwd", return_value=tmp_path),
+            patch.object(
+                AzureMLScheduleClient,
+                "delete_schedule",
+                side_effect=RuntimeError("Azure error"),
+            ),
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                cli.schedule,
+                ["--delete", "-j", "test_job"],
+                obj=cli_context,
+            )
+            assert result.exit_code == 1
+            assert "failed" in result.output.lower()
+
+    def test_delete_mutually_exclusive_with_aml_env(
+        self,
+        dummy_plugin_config,
+        patched_kedro_package,
+        cli_context,
+        tmp_path,
+    ):
+        """--delete and --aml-env cannot be used together."""
+        from click.testing import CliRunner
+
+        import kedro_azureml_pipeline.cli.commands as cli
+
+        create_kedro_conf_dirs(tmp_path)
+
+        with patch.object(Path, "cwd", return_value=tmp_path):
+            runner = CliRunner()
+            result = runner.invoke(
+                cli.schedule,
+                ["--delete", "--aml-env", "foo@latest", "-j", "test_job"],
+                obj=cli_context,
+            )
+            assert result.exit_code != 0
+            assert "mutually exclusive" in result.output.lower()
 
 
 class TestRunCLI:
