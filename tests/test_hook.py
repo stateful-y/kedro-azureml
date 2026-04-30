@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from kedro.config import MissingConfigException
 from kedro.io.core import Version
 from kedro.runner import SequentialRunner
 
@@ -103,6 +104,25 @@ class TestAzureMLLocalRunHook:
         hook.azure_config = mock_azureml_config
         hook.after_catalog_created(catalog)
         assert catalog["mem"].load() == 42
+
+    @pytest.mark.parametrize("exc", [KeyError("azureml"), MissingConfigException("no config")])
+    def test_missing_config_sets_none_and_skips_catalog(self, exc, multi_catalog):
+        """When azureml config is missing, ``azure_config`` is ``None`` and catalog is skipped."""
+        hook = AzureMLLocalRunHook()
+        context_mock = Mock(
+            config_loader=MagicMock(
+                __getitem__=Mock(side_effect=exc),
+                config_patterns={},
+            )
+        )
+        hook.after_context_created(context_mock)
+        assert hook.azure_config is None
+
+        hook.after_catalog_created(multi_catalog)
+        for dataset_name in multi_catalog.filter():
+            dataset = multi_catalog[dataset_name]
+            if isinstance(dataset, AzureMLAssetDataset):
+                assert dataset._azureml_config is None
 
     def test_module_level_singleton_exists(self):
         """The module exports a ready-to-use hook instance."""
