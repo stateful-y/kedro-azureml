@@ -106,6 +106,11 @@ class AzurePipelinesRunner(SequentialRunner):
                         ds.root_dir = azure_dataset_path
                     logger.debug("Rewired dataset '%s' root_dir to '%s'", ds_name, ds.root_dir)
                     updated_catalog[ds_name] = ds
+            elif ds_name in catalog:
+                # Resolve factory patterns (e.g. "product.{group}.{variant}.output")
+                ds = catalog[ds_name]
+                updated_catalog[ds_name] = ds
+                logger.debug("Resolved factory dataset '%s'", ds_name)
             else:
                 updated_catalog[ds_name] = self.create_default_data_set(ds_name)
                 logger.debug("Created default pickle dataset for '%s'", ds_name)
