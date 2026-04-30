@@ -423,6 +423,7 @@ class TestAzureMLAssetDataset:
             azureml_dataset="missing_asset",
             version=Version(None, None),
         )
+        ds._azureml_config = MagicMock()
         mock_client = MagicMock()
         mock_client.data.get.side_effect = ResourceNotFoundError("not found")
         mock_ctx = MagicMock()
@@ -444,6 +445,7 @@ class TestAzureMLAssetDataset:
             azureml_dataset="test_ds",
             azureml_version="99",
         )
+        ds._azureml_config = MagicMock()
         ds._download = True
         mock_client = MagicMock()
         mock_client.data.get.side_effect = ResourceNotFoundError("version 99 not found")

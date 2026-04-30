@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from kedro.io import AbstractDataset, DataCatalog
+from kedro.io import AbstractDataset, CatalogProtocol, DataCatalog
 from kedro.pipeline import Pipeline
 from kedro.runner import SequentialRunner
 from kedro_datasets.pickle import PickleDataset
@@ -44,10 +44,10 @@ class AzurePipelinesRunner(SequentialRunner):
     def run(
         self,
         pipeline: Pipeline,
-        catalog: DataCatalog,
-        hook_manager: PluginManager = None,
+        catalog: CatalogProtocol,
+        hook_manager: PluginManager | None = None,
+        run_id: str | None = None,
         only_missing_outputs: bool = False,
-        run_id: str = None,
     ) -> dict[str, Any]:
         """Execute the pipeline with Azure ML dataset path rewiring.
 
@@ -59,16 +59,17 @@ class AzurePipelinesRunner(SequentialRunner):
             Data catalog.
         hook_manager : PluginManager or None
             Pluggy hook manager.
-        only_missing_outputs : bool
-            If ``True``, only run nodes whose outputs are missing.
         run_id : str or None
             Unique run identifier.
+        only_missing_outputs : bool
+            If ``True``, only run nodes whose outputs are missing.
 
         Returns
         -------
         dict of str to Any
             Mapping of output dataset names to their values.
         """
+        assert isinstance(catalog, DataCatalog), f"AzurePipelinesRunner requires a DataCatalog, got {type(catalog)}"
         # Preserve Azure configs from existing datasets before copying
         azure_configs = {}
         for ds_name in catalog.filter():
