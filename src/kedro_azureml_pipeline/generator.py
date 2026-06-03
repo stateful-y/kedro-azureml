@@ -14,7 +14,7 @@ from azure.ai.ml import (
     command,
 )
 from azure.ai.ml.dsl import pipeline as azure_pipeline
-from azure.ai.ml.entities import Job, RetrySettings
+from azure.ai.ml.entities import Environment, Job, RetrySettings
 from azure.ai.ml.entities._builders import Command
 from kedro.io import DataCatalog
 from kedro.pipeline import Pipeline
@@ -269,15 +269,21 @@ class AzureMLPipelineGenerator:
         else:
             return _lookup(container, param_name)
 
-    def _resolve_azure_environment(self) -> str | None:
+    def _resolve_azure_environment(self) -> str | Environment | None:
         """Return the Azure ML environment name.
 
         Returns
         -------
-        str
-            Override ``aml_env`` or the value from config.
+        str | Environment | None
+            Override ``aml_env`` or the value from config. Docker image URIs
+            (e.g. ``myacr.azurecr.io/image:tag``) are wrapped in an
+            ``Environment`` object so the SDK treats them as anonymous
+            container images rather than named AML environment references.
         """
-        return self.aml_env or self.config.execution.environment
+        env = self.aml_env or self.config.execution.environment
+        if env and re.match(r"^[^@:]+\.[^@:/]+/", env):
+            return Environment(image=env)
+        return env
 
     def _get_versioned_azureml_dataset_name(self, catalog_name: str, azureml_dataset_name: str):
         """Append a version suffix to an Azure ML dataset path.

@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from azure.ai.ml.entities import Job
+from azure.ai.ml.entities import Environment, Job
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
@@ -614,3 +614,62 @@ class TestFromParamsOrValue:
         gen = self._make_generator(params, dummy_plugin_config, multi_catalog)
         result = gen._from_params_or_value("ns", "params:spec.inner.count", hint="count")
         assert result == 6
+
+
+class TestResolveAzureEnvironment:
+    """Docker image URI detection in _resolve_azure_environment."""
+
+    @pytest.mark.parametrize(
+        "env_value",
+        [
+            "myregistry.azurecr.io/my-image:latest",
+            "evolta.azurecr.io/evolta-forecast:abc123def",
+            "registry.example.com/org/image",
+            "docker.io/library/python:3.13",
+            "ghcr.io/owner/repo:sha256",
+        ],
+    )
+    def test_docker_uri_wrapped_in_environment(self, env_value, dummy_plugin_config, multi_catalog):
+        gen = AzureMLPipelineGenerator(
+            "test", "local", dummy_plugin_config, {}, catalog=multi_catalog, aml_env=env_value
+        )
+        result = gen._resolve_azure_environment()
+        assert isinstance(result, Environment)
+        assert result.image == env_value
+
+    @pytest.mark.parametrize(
+        "env_value",
+        [
+            "my-env@latest",
+            "unit_test/aml_env@latest",
+            "evolta-forecast-base@latest",
+            "my-environment",
+            "my-env:1",
+        ],
+    )
+    def test_named_environment_passed_through(self, env_value, dummy_plugin_config, multi_catalog):
+        gen = AzureMLPipelineGenerator(
+            "test", "local", dummy_plugin_config, {}, catalog=multi_catalog, aml_env=env_value
+        )
+        result = gen._resolve_azure_environment()
+        assert result == env_value
+        assert isinstance(result, str)
+
+    def test_none_when_no_environment(self, dummy_plugin_config, multi_catalog):
+        dummy_plugin_config.execution.environment = None
+        gen = AzureMLPipelineGenerator("test", "local", dummy_plugin_config, {}, catalog=multi_catalog)
+        assert gen._resolve_azure_environment() is None
+
+    def test_config_fallback_docker_uri(self, dummy_plugin_config, multi_catalog):
+        dummy_plugin_config.execution.environment = "myacr.azurecr.io/image:v1"
+        gen = AzureMLPipelineGenerator("test", "local", dummy_plugin_config, {}, catalog=multi_catalog)
+        result = gen._resolve_azure_environment()
+        assert isinstance(result, Environment)
+        assert result.image == "myacr.azurecr.io/image:v1"
+
+    def test_aml_env_overrides_config(self, dummy_plugin_config, multi_catalog):
+        dummy_plugin_config.execution.environment = "config-env@latest"
+        gen = AzureMLPipelineGenerator(
+            "test", "local", dummy_plugin_config, {}, catalog=multi_catalog, aml_env="override-env@latest"
+        )
+        assert gen._resolve_azure_environment() == "override-env@latest"
