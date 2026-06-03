@@ -64,16 +64,16 @@ class TestAfterContextCreated:
 
         assert "MLFLOW_EXPERIMENT_NAME" not in os.environ
 
-    def test_skips_env_var_when_mlflow_run_id_set(self, hook):
-        """When MLFLOW_RUN_ID is set by AzureML, skip setting
-        MLFLOW_EXPERIMENT_NAME to avoid experiment ID mismatch."""
+    def test_sets_env_var_even_when_mlflow_run_id_set(self, hook):
+        """MLFLOW_EXPERIMENT_NAME is set unconditionally; before_pipeline_run
+        will correct the active experiment from the run metadata."""
         os.environ[KEDRO_AZUREML_MLFLOW_ENABLED] = "1"
         os.environ[KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME] = "job-experiment"
         os.environ["MLFLOW_RUN_ID"] = "aml-run-123"
 
         hook.after_context_created(context=MagicMock())
 
-        assert "MLFLOW_EXPERIMENT_NAME" not in os.environ
+        assert os.environ["MLFLOW_EXPERIMENT_NAME"] == "job-experiment"
 
 
 class TestBeforePipelineRun:
@@ -101,9 +101,9 @@ class TestBeforePipelineRun:
             mock_mlflow.set_tags.assert_not_called()
 
     def test_starts_run_with_correct_experiment(self, hook):
-        """When MLFLOW_RUN_ID is set by AzureML, the hook should start the
-        run directly without calling set_experiment (to avoid experiment ID
-        mismatch with AzureML-managed experiments)."""
+        """When MLFLOW_RUN_ID is set by AzureML, the hook should fetch the
+        run's experiment ID via get_run() and call set_experiment(experiment_id=...)
+        before start_run() to align with the run's actual experiment."""
         os.environ[KEDRO_AZUREML_MLFLOW_ENABLED] = "1"
         os.environ[KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME] = "job-experiment"
         os.environ["MLFLOW_RUN_ID"] = "aml-run-123"
@@ -115,6 +115,11 @@ class TestBeforePipelineRun:
         mock_active_run.info.run_id = "aml-run-123"
         mock_mlflow.active_run.side_effect = [None, mock_active_run]
 
+        # MlflowClient().get_run() returns run info with experiment_id
+        mock_run_info = MagicMock()
+        mock_run_info.info.experiment_id = "exp-actual-456"
+        mock_mlflow.MlflowClient().get_run.return_value = mock_run_info
+
         with patch.dict("sys.modules", {"mlflow": mock_mlflow}):
             hook.before_pipeline_run(
                 run_params={},
@@ -122,8 +127,38 @@ class TestBeforePipelineRun:
                 catalog=MagicMock(),
             )
 
-        mock_mlflow.set_experiment.assert_not_called()
+        mock_mlflow.MlflowClient().get_run.assert_called_once_with("aml-run-123")
+        mock_mlflow.set_experiment.assert_called_once_with(experiment_id="exp-actual-456")
         mock_mlflow.start_run.assert_called_once_with(run_id="aml-run-123")
+
+    def test_uses_experiment_id_from_run_not_env(self, hook):
+        """The experiment ID passed to set_experiment must come from the fetched
+        run metadata, not from the MLFLOW_EXPERIMENT_NAME env var."""
+        os.environ[KEDRO_AZUREML_MLFLOW_ENABLED] = "1"
+        os.environ[KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME] = "wrong-experiment"
+        os.environ["MLFLOW_RUN_ID"] = "aml-run-789"
+
+        mock_mlflow = MagicMock()
+        mock_active_run = MagicMock()
+        mock_active_run.info.run_id = "aml-run-789"
+        mock_mlflow.active_run.side_effect = [None, mock_active_run]
+
+        mock_run_info = MagicMock()
+        mock_run_info.info.experiment_id = "exp-correct-id"
+        mock_mlflow.MlflowClient().get_run.return_value = mock_run_info
+
+        with patch.dict("sys.modules", {"mlflow": mock_mlflow}):
+            hook.before_pipeline_run(
+                run_params={},
+                pipeline=MagicMock(),
+                catalog=MagicMock(),
+            )
+
+        # Must use the experiment_id from run metadata, not experiment_name from env
+        mock_mlflow.set_experiment.assert_called_once_with(experiment_id="exp-correct-id")
+        # Must NOT have been called with the env var experiment name
+        for call in mock_mlflow.set_experiment.call_args_list:
+            assert call != (("wrong-experiment",),)
 
     def test_skips_start_run_when_no_mlflow_run_id(self, hook):
         """Without MLFLOW_RUN_ID, the hook sets the experiment but does not
