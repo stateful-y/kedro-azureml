@@ -91,7 +91,8 @@ class TestBeforePipelineRun:
 
     def test_starts_run_with_correct_experiment(self, hook):
         """When MLFLOW_RUN_ID is set by AzureML, the hook should start the
-        run under the job experiment, not whatever mlflow.yml says."""
+        run directly without calling set_experiment (to avoid experiment ID
+        mismatch with AzureML-managed experiments)."""
         os.environ[KEDRO_AZUREML_MLFLOW_ENABLED] = "1"
         os.environ[KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME] = "job-experiment"
         os.environ["MLFLOW_RUN_ID"] = "aml-run-123"
@@ -110,7 +111,7 @@ class TestBeforePipelineRun:
                 catalog=MagicMock(),
             )
 
-        mock_mlflow.set_experiment.assert_called_once_with("job-experiment")
+        mock_mlflow.set_experiment.assert_not_called()
         mock_mlflow.start_run.assert_called_once_with(run_id="aml-run-123")
 
     def test_skips_start_run_when_no_mlflow_run_id(self, hook):
