@@ -65,6 +65,13 @@ class MlflowAzureMLHook:
 
         experiment_name = os.environ.get(KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME)
         if experiment_name:
+            # When MLFLOW_RUN_ID is set, AzureML already assigned the run to
+            # its own experiment.  Setting MLFLOW_EXPERIMENT_NAME would cause
+            # kedro-mlflow to call set_experiment() with a name that resolves
+            # to a different experiment ID, triggering an ID mismatch error.
+            if os.environ.get("MLFLOW_RUN_ID"):
+                logger.info("kedro-azureml-pipeline: MLFLOW_RUN_ID is set, skipping MLFLOW_EXPERIMENT_NAME override")
+                return
             os.environ["MLFLOW_EXPERIMENT_NAME"] = experiment_name
             logger.info("kedro-azureml-pipeline: set MLFLOW_EXPERIMENT_NAME=%s", experiment_name)
 

@@ -64,6 +64,17 @@ class TestAfterContextCreated:
 
         assert "MLFLOW_EXPERIMENT_NAME" not in os.environ
 
+    def test_skips_env_var_when_mlflow_run_id_set(self, hook):
+        """When MLFLOW_RUN_ID is set by AzureML, skip setting
+        MLFLOW_EXPERIMENT_NAME to avoid experiment ID mismatch."""
+        os.environ[KEDRO_AZUREML_MLFLOW_ENABLED] = "1"
+        os.environ[KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME] = "job-experiment"
+        os.environ["MLFLOW_RUN_ID"] = "aml-run-123"
+
+        hook.after_context_created(context=MagicMock())
+
+        assert "MLFLOW_EXPERIMENT_NAME" not in os.environ
+
 
 class TestBeforePipelineRun:
     """``before_pipeline_run`` hook MLflow run lifecycle."""
