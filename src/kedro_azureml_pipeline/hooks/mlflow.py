@@ -100,12 +100,18 @@ class MlflowAzureMLHook:
             run_id = os.environ.get("MLFLOW_RUN_ID")
             if run_id:
                 # The run already exists in AzureML under its own experiment.
-                # Starting it directly avoids an experiment ID mismatch that
-                # occurs when set_experiment() resolves to a different ID.
+                # kedro-mlflow may have called set_experiment() with a name
+                # from mlflow.yml, setting _active_experiment_id to the wrong
+                # value.  We must align it with the run's actual experiment
+                # before calling start_run() to avoid an ID mismatch.
+                client = mlflow.MlflowClient()
+                run_info = client.get_run(run_id)
+                mlflow.set_experiment(experiment_id=run_info.info.experiment_id)
                 mlflow.start_run(run_id=run_id)
                 logger.info(
-                    "kedro-azureml-pipeline: resumed MLflow run %s (experiment set by AzureML)",
+                    "kedro-azureml-pipeline: resumed MLflow run %s (experiment_id=%s)",
                     run_id,
+                    run_info.info.experiment_id,
                 )
             else:
                 mlflow.set_experiment(experiment_name)
