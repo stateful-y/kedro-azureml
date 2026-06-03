@@ -657,16 +657,12 @@ class TestResolveAzureEnvironment:
 
     def test_none_when_no_environment(self, dummy_plugin_config, multi_catalog):
         dummy_plugin_config.execution.environment = None
-        gen = AzureMLPipelineGenerator(
-            "test", "local", dummy_plugin_config, {}, catalog=multi_catalog
-        )
+        gen = AzureMLPipelineGenerator("test", "local", dummy_plugin_config, {}, catalog=multi_catalog)
         assert gen._resolve_azure_environment() is None
 
     def test_config_fallback_docker_uri(self, dummy_plugin_config, multi_catalog):
         dummy_plugin_config.execution.environment = "myacr.azurecr.io/image:v1"
-        gen = AzureMLPipelineGenerator(
-            "test", "local", dummy_plugin_config, {}, catalog=multi_catalog
-        )
+        gen = AzureMLPipelineGenerator("test", "local", dummy_plugin_config, {}, catalog=multi_catalog)
         result = gen._resolve_azure_environment()
         assert isinstance(result, Environment)
         assert result.image == "myacr.azurecr.io/image:v1"

@@ -245,6 +245,7 @@ exclude = ["CHANGELOG.md", "site", "htmlcov", ".nox", ".venv"]
 # Third-party SDK type stubs (Azure ML, Kedro) have incomplete or incorrect annotations.
 [tool.ty.rules]
 call-non-callable = "warn"
+invalid-assignment = "warn"
 invalid-method-override = "warn"
 invalid-parameter-default = "warn"
 invalid-return-type = "warn"
