@@ -632,6 +632,12 @@ def schedule_jobs(
                 workspace = config.workspace.resolve(workspace_override or job_config.workspace)
                 pipeline_opts = job_config.pipeline
 
+                # Set experiment_name on the pipeline job so AzureML uses it
+                # for scheduled runs (analogous to run_jobs passing it to
+                # ml_client.jobs.create_or_update).
+                if job_experiment_name:
+                    pipeline_job.experiment_name = job_experiment_name
+
                 schedule_cfg = resolve_schedule(job_config.schedule, config.schedules)
                 trigger = build_trigger(schedule_cfg)
 
