@@ -399,6 +399,8 @@ class JobConfig(BaseModel):
         Named compute entry to use.
     schedule : ScheduleConfig or str or None
         Inline schedule, named schedule reference, or ``None`` for ad-hoc.
+    params : dict of str to Any or None
+        Job-level runtime parameters merged into every step. CLI --params take precedence.
     retry : RetryConfig or None
         Retry settings applied to every step in this job.
     description : str or None
@@ -439,6 +441,10 @@ class JobConfig(BaseModel):
     compute: str | None = Field(default=None, description="Named compute entry to use.")
     schedule: ScheduleConfig | str | None = Field(
         default=None, description="Inline schedule, named schedule reference, or None for ad-hoc."
+    )
+    params: dict[str, Any] | None = Field(
+        default=None,
+        description="Job-level runtime parameters merged into every step. CLI --params take precedence.",
     )
     retry: RetryConfig | None = Field(default=None, description="Retry settings applied to every step in this job.")
     description: str | None = Field(default=None, description="Human-readable job description.")
