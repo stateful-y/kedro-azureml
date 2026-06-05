@@ -236,6 +236,17 @@ class TestJobConfig:
         assert jc.retry.max_retries == 3
         assert jc.retry.timeout == 3600
 
+    def test_params_default_none(self):
+        jc = JobConfig(pipeline=PipelineFilterOptions(pipeline_name="pipe"))
+        assert jc.params is None
+
+    def test_params_set(self):
+        jc = JobConfig(
+            pipeline=PipelineFilterOptions(pipeline_name="pipe"),
+            params={"arena_snapshot": "2026-06", "model.lr": 0.01},
+        )
+        assert jc.params == {"arena_snapshot": "2026-06", "model.lr": 0.01}
+
 
 class TestKedroAzureMLConfig:
     """Top-level config parsing and template."""

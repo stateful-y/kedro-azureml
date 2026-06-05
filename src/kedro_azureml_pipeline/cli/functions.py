@@ -66,6 +66,27 @@ def parse_runtime_params(params, silent=False):
     return parameters
 
 
+def _merge_job_params(cli_params: str, job_config) -> str:
+    """Merge job-level params with CLI params (CLI wins).
+
+    Parameters
+    ----------
+    cli_params : str
+        Raw CLI ``--params`` JSON string.
+    job_config : JobConfig
+        Job configuration potentially containing ``params``.
+
+    Returns
+    -------
+    str
+        Merged params as a JSON string, or empty string when none.
+    """
+    job_params = job_config.params or {}
+    cli_parsed = parse_runtime_params(cli_params, silent=True) or {}
+    merged = {**job_params, **cli_parsed}
+    return json.dumps(merged) if merged else ""
+
+
 def warn_about_ignore_files():
     """Emit warnings about ``.amlignore`` and ``.gitignore`` files.
 
@@ -297,7 +318,7 @@ def compile_job_pipelines(
                 mgr.context.params,
                 mgr.context.catalog,
                 aml_env,
-                params,
+                _merge_job_params(params, job_config),
                 extra_env=extra_env,
                 load_versions=load_versions,
                 filter_options=pipeline_opts,
@@ -380,7 +401,7 @@ def _prepare_jobs(
                 mgr.context.params,
                 mgr.context.catalog,
                 aml_env,
-                params,
+                _merge_job_params(params, job_config),
                 extra_env=extra_env,
                 load_versions=load_versions,
                 filter_options=pipeline_opts,

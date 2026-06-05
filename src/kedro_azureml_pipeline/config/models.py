@@ -442,6 +442,10 @@ class JobConfig(BaseModel):
     )
     retry: RetryConfig | None = Field(default=None, description="Retry settings applied to every step in this job.")
     description: str | None = Field(default=None, description="Human-readable job description.")
+    params: dict[str, Any] | None = Field(
+        default=None,
+        description="Job-level runtime parameters merged into every step. CLI --params take precedence.",
+    )
 
 
 class KedroAzureMLConfig(BaseModel):

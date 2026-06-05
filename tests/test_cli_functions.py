@@ -7,6 +7,7 @@ import click
 import pytest
 
 from kedro_azureml_pipeline.cli.functions import (
+    _merge_job_params,
     _read_mlflow_experiment_name,
     default_job_callback,
     dynamic_import_job_schedule_func_from_str,
@@ -195,3 +196,41 @@ class TestReadMlflowExperimentName:
         mgr = MagicMock()
         mgr.context.config_loader.__getitem__ = MagicMock(side_effect=TypeError)
         assert _read_mlflow_experiment_name(mgr) is None
+
+
+class TestMergeJobParams:
+    """Job-level params merging with CLI params."""
+
+    def test_job_params_only(self):
+        job = MagicMock()
+        job.params = {"arena_snapshot": "2026-06"}
+        result = _merge_job_params("", job)
+        assert result == '{"arena_snapshot": "2026-06"}'
+
+    def test_cli_params_only(self):
+        job = MagicMock()
+        job.params = None
+        result = _merge_job_params('{"lr": 0.01}', job)
+        assert result == '{"lr": 0.01}'
+
+    def test_cli_overrides_job(self):
+        job = MagicMock()
+        job.params = {"arena_snapshot": "2026-06", "lr": 0.1}
+        result = _merge_job_params('{"lr": 0.01}', job)
+        import json
+
+        merged = json.loads(result)
+        assert merged["arena_snapshot"] == "2026-06"
+        assert merged["lr"] == 0.01
+
+    def test_both_empty(self):
+        job = MagicMock()
+        job.params = None
+        result = _merge_job_params("", job)
+        assert result == ""
+
+    def test_job_params_empty_dict(self):
+        job = MagicMock()
+        job.params = {}
+        result = _merge_job_params("", job)
+        assert result == ""
