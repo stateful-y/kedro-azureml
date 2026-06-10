@@ -10,8 +10,6 @@ compute:               # required
 execution:             # optional
 schedules:             # optional
 jobs:                  # optional
-job_target_provider:   # optional (default "pipelines"; "inline" reads job_targets)
-job_targets:           # optional (inline bindings; overrides the default)
 ```
 
 ---
@@ -203,14 +201,7 @@ jobs:
 * **`kedro azureml run -j <name>`** renders all bindings (overlaying literal jobs) and looks the requested name up; an unknown name is an error listing the available jobs.
 * **`kedro azureml schedule`** (no `-j`) deploys one job per binding, with one schedule trigger per `schedule` list entry.
 
-#### Overriding the binding source
-
-The binding source is the `pipelines` provider by default. To supply bindings explicitly instead (for cases not derivable from pipelines), set a top-level `job_targets` list — a non-empty list switches to the built-in `inline` provider. Providers are resolved from the `kedro_azureml_pipeline.job_target_providers` entry-point group; register your own and select it with `job_target_provider` to plug in a custom source.
-
-| Field | Default | Description |
-|---|---|---|
-| `job_target_provider` | `"pipelines"` | Registered target provider. `pipelines` derives bindings from namespaces; `inline` reads `job_targets` |
-| `job_targets` | `[]` | Optional inline token bindings (incl. `job`); a non-empty list forces the `inline` provider |
+There is no separate target list or provider key: the jobs are always derived from the pipeline namespaces, so adding a variant or group to your pipelines yields its jobs with no config edit.
 
 ### `retry`
 

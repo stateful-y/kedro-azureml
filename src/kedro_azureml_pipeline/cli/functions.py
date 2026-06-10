@@ -7,6 +7,7 @@ import re
 from collections.abc import Callable
 from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
@@ -14,6 +15,9 @@ from kedro_azureml_pipeline.factory import enumerate_jobs, resolve_jobs
 from kedro_azureml_pipeline.generator import AzureMLPipelineGenerator
 from kedro_azureml_pipeline.manager import KedroContextManager
 from kedro_azureml_pipeline.utils import CliContext
+
+if TYPE_CHECKING:
+    from kedro_azureml_pipeline.config.models import ScheduleConfig
 
 logger = logging.getLogger()
 
@@ -293,7 +297,7 @@ def compile_job_pipelines(
         from kedro.framework.project import pipelines
 
         try:
-            selected_jobs = resolve_jobs(config, job_names, ctx.env, pipelines)
+            selected_jobs = resolve_jobs(config, job_names, pipelines)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
 
@@ -378,9 +382,7 @@ def _prepare_jobs(
 
         try:
             selected_jobs = (
-                resolve_jobs(config, job_names, ctx.env, pipelines)
-                if job_names
-                else enumerate_jobs(config, ctx.env, pipelines)
+                resolve_jobs(config, job_names, pipelines) if job_names else enumerate_jobs(config, pipelines)
             )
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
@@ -513,15 +515,19 @@ def run_jobs(
         return all(results.values())
 
 
-def _schedule_entries(job_name: str, schedule) -> list[tuple[str, object]]:
-    """Map a job's ``schedule`` (one or a list) to ``(schedule_name, ref)`` pairs.
+def _schedule_entries(
+    job_name: str, schedule: "ScheduleConfig | str | list[ScheduleConfig | str] | None"
+) -> "list[tuple[str, ScheduleConfig | str]]":
+    """Map a job's ``schedule`` (one, a list, or None) to ``(schedule_name, ref)`` pairs.
 
     A single schedule keeps the job name; a list gets a stable per-entry suffix
-    (the named ref for strings, else the index). Shared by schedule creation and
-    deletion so the two never drift.
+    (the named ref for strings, else the index); ``None`` yields no entries.
+    Shared by schedule creation and deletion so the two never drift.
     """
+    if schedule is None:
+        return []
     refs = schedule if isinstance(schedule, list) else [schedule]
-    entries: list[tuple[str, object]] = []
+    entries: list[tuple[str, ScheduleConfig | str]] = []
     for index, ref in enumerate(refs):
         if len(refs) == 1:
             name = job_name
@@ -561,9 +567,9 @@ def delete_schedules(
     bool
         ``True`` if all deletions succeeded (or were no-ops).
     """
-    from kedro_azureml_pipeline.scheduler import AzureMLScheduleClient
-
     from kedro.framework.project import pipelines
+
+    from kedro_azureml_pipeline.scheduler import AzureMLScheduleClient
 
     with KedroContextManager(env=ctx.env) as mgr:
         config = mgr.plugin_config
@@ -574,7 +580,7 @@ def delete_schedules(
             )
 
         try:
-            selected_jobs = resolve_jobs(config, job_names, ctx.env, pipelines)
+            selected_jobs = resolve_jobs(config, job_names, pipelines)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
 
@@ -585,7 +591,10 @@ def delete_schedules(
             try:
                 workspace = config.workspace.resolve(workspace_override or job_config.workspace)
                 # Mirror the creation naming: delete every schedule the job owns.
-                for schedule_name, _ in _schedule_entries(job_name, job_config.schedule):
+                # A job with no schedule config falls back to the bare job name
+                # (the legacy 1:1 schedule name), so stale schedules can be pruned.
+                schedule_names = [name for name, _ in _schedule_entries(job_name, job_config.schedule)] or [job_name]
+                for schedule_name in schedule_names:
                     if dry_run:
                         click.echo(f"[DRY RUN] Would delete schedule '{schedule_name}'")
                     else:

@@ -510,15 +510,7 @@ class KedroAzureMLConfig(BaseModel):
     )
     jobs: dict[str, JobConfig] = Field(
         default_factory=dict,
-        description="Named job definitions. A key containing '{token}' placeholders is a job factory.",
-    )
-    job_targets: list[dict[str, str]] = Field(
-        default_factory=list,
-        description="Optional inline job targets (token bindings incl. job-type). A non-empty list overrides the default 'pipelines' provider with the 'inline' provider.",
-    )
-    job_target_provider: str = Field(
-        default="pipelines",
-        description="Registered job-target provider (entry-point group 'kedro_azureml_pipeline.job_target_providers'). Default 'pipelines' derives bindings from the Kedro pipeline namespaces; 'inline' reads 'job_targets'.",
+        description="Named job definitions. A key containing '{token}' placeholders is a job factory whose jobs are derived from the Kedro pipeline namespaces.",
     )
 
 
