@@ -41,23 +41,22 @@ adds its job with no `azureml.yml` edit, so the two stay in lockstep.
 
 ## Jobs are derived from the pipeline namespaces
 
-Each factory declares a `node_namespaces` template. The placeholders in that
-template, and their depth, tell the plugin how to read the pipeline's namespaces:
+Each factory declares a `node_namespaces` template, and the placeholders in that
+template, with their depth, tell the plugin how to read the pipeline's namespaces.
+A `{region}-{model}-training` factory whose `node_namespaces` is `{region}.{model}`
+reads the first two namespace levels of each node, binds the placeholders
+positionally, and renders the pattern into one job per distinct namespace:
 
-```yaml
-jobs:
-  "{region}-{model}-training":
-    pipeline:
-      pipeline_name: training
-      node_namespaces: ["{region}.{model}"]   # 2 placeholders, 2 namespace levels
-    schedule: nightly
+```text
+  node namespace        binding                       derived job
+  europe.lgbm    ->     region=europe,  model=lgbm  ->  europe-lgbm-training
+  america.lgbm   ->     region=america, model=lgbm  ->  america-lgbm-training
 ```
 
-Given a `training` pipeline whose nodes are namespaced `europe.lgbm`,
-`america.lgbm`, and so on, the plugin reads the first two namespace levels of each
-and binds `region` and `model` positionally. Every distinct namespace becomes one
-job, named by rendering the factory pattern: `europe-lgbm-training`, and so on.
-The namespace alone identifies the job, so no `tags` filter is needed.
+Every distinct namespace becomes exactly one job, so the namespace alone
+identifies it and no `tags` filter is needed. The
+[how-to guide](../how-to/define-job-factories.md#1-write-a-factory-pattern) shows
+the YAML.
 
 ## Resolution is forward-only
 
@@ -73,43 +72,16 @@ available jobs.
 
 ## Most-specific pattern wins
 
-You can add a more-specific factory to override part of a family. When more than
-one pattern would render the same name, the one with the most literal
-(non-placeholder) characters supplies the configuration:
-
-```yaml
-jobs:
-  "{region}-{model}-inference":          # general: nightly
-    schedule: nightly
-    pipeline: {pipeline_name: inference, node_namespaces: ["{region}.{model}"]}
-
-  "america-{model}-inference":           # more specific: hourly for america
-    schedule: hourly
-    pipeline: {pipeline_name: inference, node_namespaces: ["{region}.{model}"]}
-```
-
-Here every region runs nightly except `america`, which runs hourly, with no
-override table. This is the same precedence a more-specific dataset factory
-pattern has over a general one.
-
-## Multiple schedules on one job
-
-A job's `schedule` accepts a single value or a list. A list deploys one Azure ML
-schedule trigger per entry against the same job, so a single inference job can run
-on several cron triggers (for example a nightly and a midday run) without being
-split into separate jobs.
-
-## Seeing what a factory produces
-
-Because the concrete jobs are derived, they are not written in `azureml.yml`. To
-see them, mirroring `kedro catalog resolve-patterns`, use:
-
-```bash
-kedro azureml resolve-patterns   # the concrete jobs (names, namespaces, schedules)
-kedro azureml list-patterns      # the factory patterns themselves
-```
-
-`resolve-patterns` answers the question "what can I pass to `run -j`?".
+A family can have exceptions. When a second factory renders some of the same
+names as a general one, the more-specific pattern wins: the pattern with the most
+literal (non-placeholder) characters supplies the configuration for the names it
+matches, while the general pattern still covers the rest. A general
+`{region}-{model}-inference` factory can run every region nightly while a narrower
+`america-{model}-inference` factory gives just `america` an hourly cadence, with
+no override table to maintain. This is the same precedence a more-specific dataset
+factory pattern has over a general one. The
+[how-to guide](../how-to/define-job-factories.md#2-override-part-of-the-family-with-a-more-specific-pattern)
+shows the configuration.
 
 ## When to use a factory
 

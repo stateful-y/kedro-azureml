@@ -175,9 +175,9 @@ A `jobs` key that contains `{placeholder}` markers is a **job factory**: a templ
 
 ```yaml
 jobs:
-  # one job per namespace of the `inference` pipeline; a list of schedules gives two triggers
+  # one job per namespace of the `inference` pipeline
   "{region}-{model}-inference":
-    schedule: [nightly, midday]
+    schedule: nightly
     pipeline:
       pipeline_name: "inference"
       node_namespaces: ["{region}.{model}"]
