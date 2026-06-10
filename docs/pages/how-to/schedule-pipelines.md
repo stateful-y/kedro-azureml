@@ -80,19 +80,19 @@ jobs:
 
 A job's `schedule` may be a list. Each entry deploys one Azure ML schedule
 trigger against the same job, so a single job can fire on several cadences (for
-example a day-ahead and a 9:30 vintage) without splitting it into separate jobs:
+example a nightly and a midday run) without splitting it into separate jobs:
 
 ```yaml
 jobs:
   inference:
     pipeline:
       pipeline_name: "inference"
-    schedule: ["da-vintages", "da-vintage-930"]
+    schedule: ["nightly", "midday"]
 ```
 
-Scheduling deploys one trigger per entry. The single-schedule trigger keeps the
-job's name; with a list, each trigger is named `{job}-{schedule}`. Deleting the
-job's schedules (`schedule --delete -j inference`) removes all of them.
+Scheduling deploys one trigger per entry. A single schedule keeps the job's name;
+with a list, each trigger is named `{job}-{schedule}`. Deleting the job's
+schedules (`schedule --delete -j inference`) removes all of them.
 
 ## Preview without creating
 

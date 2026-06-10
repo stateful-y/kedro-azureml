@@ -86,7 +86,7 @@ Creates or updates persistent Azure ML schedules for named job(s). Every selecte
 kedro azureml resolve-patterns
 ```
 
-Lists the concrete jobs derived from the [job factories](configuration.md#job-factories) and the pipeline namespaces — the job analogue of `kedro catalog resolve-patterns`. For each job it prints the name, pipeline, node namespaces, and schedule; literal (non-factory) jobs are included. No Azure ML connection is made. Add `-e ENV` to inspect a specific environment.
+Lists the concrete jobs derived from the [job factories](configuration.md#job-factories) and the pipeline namespaces (the job analogue of `kedro catalog resolve-patterns`). For each job it prints the name, pipeline, node namespaces, and schedule; literal (non-factory) jobs are included. No Azure ML connection is made. Add `-e ENV` to inspect a specific environment.
 
 The names printed here are exactly what you pass to `-j` on `run`, `schedule`, and `compile`.
 
@@ -98,7 +98,7 @@ The names printed here are exactly what you pass to `-j` on `run`, `schedule`, a
 kedro azureml list-patterns
 ```
 
-Lists the job-factory keys — the `jobs` keys containing `{token}` placeholders (the analogue of `kedro catalog list-patterns`). Literal job keys are not listed; use `resolve-patterns` to see the concrete jobs the factories produce.
+Lists the job-factory patterns, the `jobs` keys containing `{placeholder}` markers (the analogue of `kedro catalog list-patterns`). Literal job keys are not listed; use `resolve-patterns` to see the concrete jobs the factories produce.
 
 ---
 

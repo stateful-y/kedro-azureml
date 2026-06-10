@@ -1,23 +1,24 @@
 """Forward-only job factory resolution.
 
-A ``jobs`` key containing ``{token}`` placeholders is a *job factory*: a templated
-job entry sharing the config surface of a Kedro dataset factory. The concrete jobs
-are derived from the **Kedro pipeline namespaces** — for each factory, its
-``node_namespaces`` template defines the binding tokens and their namespace depth,
-and the distinct namespaces of its pipeline become the jobs (the job analogue of a
-dataset factory taking its demand from pipeline node references).
+A ``jobs`` key containing ``{placeholder}`` markers is a *job factory*: a
+templated job entry sharing the config surface of a Kedro dataset factory. The
+concrete jobs are derived from the Kedro pipeline namespaces. For each factory,
+its ``node_namespaces`` template defines the binding placeholders and their
+namespace depth, and the distinct namespaces of its pipeline become the jobs (the
+job analogue of a dataset factory, whose datasets are determined by pipeline node
+references).
 
 Names are produced only by rendering bindings forward; they are never
-reverse-parsed (token contents include the ``-`` separator, e.g. ``da_energy``,
-which would make reverse-parsing ambiguous).
+reverse-parsed (a placeholder value can contain the ``-`` separator, e.g.
+``north-america``, which would make reverse-parsing ambiguous).
 
-* **enumerate** (schedule deploy, listing): render every binding into its job.
-* **run -j <name>**: render all bindings (plus literal jobs) into a name -> job
-  map and look the requested name up.
+* enumerate (schedule deploy, listing): render every binding into its job.
+* run -j <name>: render all bindings (plus literal jobs) into a name -> job map
+  and look the requested name up.
 
-Each binding is tagged with its factory's job-type suffix, so an ``inference``
-binding never matches an ``inference-930`` factory. When several factories render
-the same name, the most-specific one (most literal characters) supplies the config.
+Each binding is tagged with its factory's job-type suffix, so a binding for one
+job type never matches a factory for another. When several factories render the
+same name, the most-specific one (most literal characters) supplies the config.
 """
 
 from __future__ import annotations
@@ -115,7 +116,7 @@ def _derive_bindings(config: KedroAzureMLConfig, pipelines: Mapping[str, Any] | 
 
 
 def is_factory(key: str) -> bool:
-    """True if a ``jobs`` key is a factory (contains ``{token}`` placeholders)."""
+    """True if a ``jobs`` key is a factory (contains ``{placeholder}`` markers)."""
     return "{" in key and "}" in key
 
 

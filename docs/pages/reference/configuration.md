@@ -171,37 +171,37 @@ jobs:
 
 ### Job factories
 
-A `jobs` key that contains `{token}` placeholders is a **job factory** — a templated job entry, mirroring a Kedro dataset factory. By default the jobs are derived from your **pipeline namespaces**, the same way a dataset factory's concrete datasets are determined by pipeline node references. You write a few factories; the concrete jobs come from the namespaces of each factory's pipeline. No target list is required:
+A `jobs` key that contains `{placeholder}` markers is a **job factory**: a templated job entry, mirroring a Kedro dataset factory. By default the jobs are derived from your **pipeline namespaces**, the same way a dataset factory's concrete datasets are determined by pipeline node references. You write a few factory patterns, and the concrete jobs come from the namespaces of each factory's pipeline. No target list is required:
 
 ```yaml
 jobs:
-  # one job per namespace of the `inference` pipeline; day-ahead gets two triggers
-  "{product}-{group}-{variant}-inference":
-    schedule: ["da-vintages", "da-vintage-930"]
+  # one job per namespace of the `inference` pipeline; a list of schedules gives two triggers
+  "{region}-{model}-inference":
+    schedule: [nightly, midday]
     pipeline:
       pipeline_name: "inference"
-      node_namespaces: ["{product}.{group}.{variant}"]
-  # a more-specific factory overrides the schedule for one product
-  "rt_energy-{group}-{variant}-inference":
-    schedule: "rt-hourly"
+      node_namespaces: ["{region}.{model}"]
+  # a more-specific pattern overrides the schedule for one region
+  "america-{model}-inference":
+    schedule: "hourly"
     pipeline:
       pipeline_name: "inference"
-      node_namespaces: ["{product}.{group}.{variant}"]
+      node_namespaces: ["{region}.{model}"]
   # literal (non-factory) jobs are kept verbatim and take precedence
   snapshot:
     pipeline: {pipeline_name: "snapshot"}
 ```
 
-**Bindings come from the pipeline.** For each factory, the `node_namespaces` template defines the token names and their namespace depth; the plugin enumerates the distinct namespaces of `pipeline_name` at that depth and binds the tokens positionally (e.g. `da_energy.hub.champion` → `product=da_energy, group=hub, variant=champion`). One job is produced per binding. Adding a variant or group to your pipelines makes its jobs appear with no `azureml.yml` edit. A factory name token that is absent from its `node_namespaces` template is a configuration error.
+**Bindings come from the pipeline.** For each factory, the `node_namespaces` template defines the placeholder names and their namespace depth. The plugin enumerates the distinct namespaces of `pipeline_name` at that depth and binds the placeholders positionally (so the namespace `europe.lgbm` binds `region=europe, model=lgbm`). One job is produced per binding. Adding a variant to your pipelines makes its job appear with no `azureml.yml` edit. A factory name placeholder that is absent from its `node_namespaces` template is a configuration error.
 
-**Resolution is forward-only.** Job names are produced *only* by rendering tokens into a factory; names are never parsed back. When more than one factory renders the same name, the **most-specific** one (most literal, non-token characters) supplies the config — so per-product variation like a different schedule is expressed by a more-specific factory rather than an override table. Literal (non-factory) jobs take precedence over any factory.
+**Resolution is forward-only.** Job names are produced only by rendering placeholders into a pattern; names are never parsed back. When more than one pattern renders the same name, the **most-specific** one (most literal, non-placeholder characters) supplies the config, so per-region variation such as a different schedule is expressed by a more-specific pattern rather than an override table. Literal (non-factory) jobs take precedence over any pattern.
 
-`{token}` (factory) and `${...}` (OmegaConf) use different syntax and coexist. Because the variant is a namespace level, jobs are filtered by `node_namespaces` alone — no `tags` needed. Job names use the namespace form of each token verbatim (e.g. `da_energy-hub-champion-inference`).
+`{placeholder}` (factory) and `${...}` (OmegaConf) use different syntax and coexist. The namespace alone identifies the job, so no `tags` filter is needed. Job names use the namespace form of each placeholder verbatim (so `europe.lgbm` yields `europe-lgbm-inference`).
 
 * **`kedro azureml run -j <name>`** renders all bindings (overlaying literal jobs) and looks the requested name up; an unknown name is an error listing the available jobs.
-* **`kedro azureml schedule`** (no `-j`) deploys one job per binding, with one schedule trigger per `schedule` list entry.
+* **`kedro azureml resolve-patterns`** lists every derived job (see the [CLI reference](cli.md)), which is how you discover the names to pass to `-j`.
 
-There is no separate target list or provider key: the jobs are always derived from the pipeline namespaces, so adding a variant or group to your pipelines yields its jobs with no config edit.
+There is no separate target list or provider key: the jobs are always derived from the pipeline namespaces, so adding a variant to your pipelines yields its job with no config edit.
 
 ### `retry`
 

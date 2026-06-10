@@ -2,114 +2,124 @@
 
 A job factory lets you define many similar Azure ML jobs with a single templated
 entry, instead of writing one `jobs` block per pipeline variant. If you have a
-handful of distinct jobs, write them literally. If you have a *family* of jobs
-that differ only by a namespace — one per product, group, or model variant — a
-factory expresses the whole family at once, and the concrete jobs are derived
-from your pipelines.
+handful of distinct jobs, write them out. If you have a *family* of jobs that
+differ only by a namespace, such as one per region or model, a factory expresses
+the whole family at once, and the concrete jobs are derived from your pipelines.
 
 ## The dataset-factory analogy
 
 If you have used Kedro [dataset factories](https://docs.kedro.org/en/stable/data/kedro_dataset_factories.html),
 you already know the idea. A dataset factory is a catalog entry whose key is a
-pattern; Kedro never asks you to list the concrete datasets, because they are
-*determined by the pipelines* — the datasets a factory produces are exactly those
-its nodes reference.
+pattern containing `{placeholder}` markers. Kedro never asks you to list the
+concrete datasets, because they are determined by the pipelines: a factory
+produces exactly the datasets its nodes reference.
 
 Job factories apply the same principle to Azure ML jobs:
 
 ```text
-  dataset factory:  catalog pattern  +  node references     ⟶  datasets
-  job factory:      jobs pattern     +  pipeline namespaces  ⟶  jobs
+  dataset factory:  catalog pattern  +  node references     ->  datasets
+  job factory:      jobs pattern     +  pipeline namespaces  ->  jobs
 ```
 
-A `jobs` key that contains `{token}` placeholders is a job factory. The jobs it
-produces are derived from the **namespaces of its pipeline** — there is no list
-of concrete jobs to maintain. Add a namespaced variant to your pipelines and its
+A `jobs` key that contains `{placeholder}` markers is a job factory. The jobs it
+produces are derived from the namespaces of its pipeline, so there is no list of
+concrete jobs to maintain. Add a namespaced variant to your pipelines and its
 jobs appear automatically.
+
+## Connection to dynamic pipelines
+
+Job factories are the deployment counterpart to
+[Kedro dynamic pipelines](https://docs.kedro.org/en/stable/build/namespaces/).
+A dynamic pipeline is built programmatically, wrapping a reusable pipeline in a
+namespace once per variant, so the graph gains one namespaced instance per
+variant (for example `europe.forecast`, `america.forecast`). A job factory reads
+those namespaces and produces the matching Azure ML job for each.
+
+The two patterns pair up: the dynamic pipeline decides which variants exist, and
+the job factory turns each into a job. Adding a variant to the pipeline factory
+adds its job with no `azureml.yml` edit, so the two stay in lockstep.
 
 ## Jobs are derived from the pipeline namespaces
 
-Each factory declares a `node_namespaces` template. The tokens in that template,
-and their depth, tell the plugin how to read the pipeline's namespaces:
+Each factory declares a `node_namespaces` template. The placeholders in that
+template, and their depth, tell the plugin how to read the pipeline's namespaces:
 
 ```yaml
 jobs:
-  "{product}-{group}-{variant}-inference":
+  "{region}-{model}-training":
     pipeline:
-      pipeline_name: inference
-      node_namespaces: ["{product}.{group}.{variant}"]   # 3 tokens, 3 namespace levels
-    schedule: da-vintages
+      pipeline_name: training
+      node_namespaces: ["{region}.{model}"]   # 2 placeholders, 2 namespace levels
+    schedule: nightly
 ```
 
-Given an `inference` pipeline whose nodes are namespaced
-`da_energy.hub.champion`, `rt_energy.hub.champion`, … the plugin reads the first
-three namespace levels of each and binds `product`, `group`, `variant`
-positionally. Every distinct namespace becomes one job, named by rendering the
-factory key: `da_energy-hub-champion-inference`, and so on.
-
-Because the variant is itself a namespace level, no `tags` filter is needed — the
-namespace alone identifies the job.
+Given a `training` pipeline whose nodes are namespaced `europe.lgbm`,
+`america.lgbm`, and so on, the plugin reads the first two namespace levels of each
+and binds `region` and `model` positionally. Every distinct namespace becomes one
+job, named by rendering the factory pattern: `europe-lgbm-training`, and so on.
+The namespace alone identifies the job, so no `tags` filter is needed.
 
 ## Resolution is forward-only
 
-Names are produced *only* by rendering tokens into a factory; the plugin never
-parses a job name back into tokens. This matters because token values can contain
-the `-` separator (`da_energy` is one product), which makes reverse-parsing
-ambiguous. Going forward — tokens to name — is always unambiguous.
+Names are produced only by rendering placeholders into a pattern; the plugin
+never parses a job name back into placeholders. This matters because a
+placeholder value can itself contain the `-` separator (a region named
+`north-america` is one value), which makes reverse-parsing ambiguous. Going
+forward, from placeholders to name, is always unambiguous.
 
 When you run `kedro azureml run -j <name>`, the plugin renders the full set of
-derived jobs and looks the name up; an unknown name is an error that lists the
+derived jobs and looks the name up. An unknown name is an error that lists the
 available jobs.
 
-## Most-specific factory wins
+## Most-specific pattern wins
 
 You can add a more-specific factory to override part of a family. When more than
-one factory would render the same name, the one with the most literal
-(non-token) characters supplies the configuration:
+one pattern would render the same name, the one with the most literal
+(non-placeholder) characters supplies the configuration:
 
 ```yaml
 jobs:
-  "{product}-{group}-{variant}-inference":          # general: day-ahead vintages
-    schedule: [da-vintages, da-vintage-930]
-    pipeline: {pipeline_name: inference, node_namespaces: ["{product}.{group}.{variant}"]}
+  "{region}-{model}-inference":          # general: nightly
+    schedule: nightly
+    pipeline: {pipeline_name: inference, node_namespaces: ["{region}.{model}"]}
 
-  "rt_energy-{group}-{variant}-inference":          # more specific: hourly for rt_energy
-    schedule: rt-hourly
-    pipeline: {pipeline_name: inference, node_namespaces: ["{product}.{group}.{variant}"]}
+  "america-{model}-inference":           # more specific: hourly for america
+    schedule: hourly
+    pipeline: {pipeline_name: inference, node_namespaces: ["{region}.{model}"]}
 ```
 
-This expresses "everything runs on the day-ahead vintages, except `rt_energy`,
-which runs hourly" without an override table — the same way a more-specific
-dataset factory pattern overrides a general one.
+Here every region runs nightly except `america`, which runs hourly, with no
+override table. This is the same precedence a more-specific dataset factory
+pattern has over a general one.
 
 ## Multiple schedules on one job
 
 A job's `schedule` accepts a single value or a list. A list deploys one Azure ML
 schedule trigger per entry against the same job, so a single inference job can run
-on several cron triggers (e.g. a day-ahead and a 9:30 vintage) rather than being
+on several cron triggers (for example a nightly and a midday run) without being
 split into separate jobs.
 
 ## Seeing what a factory produces
 
 Because the concrete jobs are derived, they are not written in `azureml.yml`. To
-see them — mirroring `kedro catalog resolve-patterns` — use:
+see them, mirroring `kedro catalog resolve-patterns`, use:
 
 ```bash
 kedro azureml resolve-patterns   # the concrete jobs (names, namespaces, schedules)
-kedro azureml list-patterns      # the factory keys themselves
+kedro azureml list-patterns      # the factory patterns themselves
 ```
 
-`resolve-patterns` is the answer to "what can I pass to `run -j`?".
+`resolve-patterns` answers the question "what can I pass to `run -j`?".
 
 ## When to use a factory
 
-| Use a literal job when… | Use a factory when… |
+| Use a literal job when... | Use a factory when... |
 |---|---|
 | you have a few distinct jobs | you have a family of jobs differing only by namespace |
 | each job is configured by hand | the set should track the pipelines automatically |
 | there is no namespaced variation | adding a variant should not require editing `azureml.yml` |
 
-Literal and factory jobs coexist in the same `jobs` section; a literal key always
+Literal and factory jobs coexist in the same `jobs` section. A literal key always
 takes precedence over a factory that would render the same name.
 
 ## See also
