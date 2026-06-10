@@ -62,7 +62,7 @@ Pipelines can run on automated schedules defined in configuration. Cron expressi
 
 ### Job factories
 
-A `jobs` key containing `{token}` placeholders is a job factory: the concrete jobs are derived from the Kedro pipeline namespaces, the same way a dataset factory takes its demand from pipeline node references. This expresses a whole family of namespaced jobs (per product, group, or variant) with one templated entry, so the job set tracks the pipelines automatically. See [Job Factories](job-factories.md).
+A `jobs` key containing `{token}` placeholders is a job factory: the concrete jobs are derived from the Kedro pipeline namespaces, the same way a dataset factory's concrete datasets are determined by pipeline node references. This expresses a whole family of namespaced jobs (per product, group, or variant) with one templated entry, so the job set tracks the pipelines automatically. See [Job Factories](job-factories.md).
 
 ## Limitations and considerations
 

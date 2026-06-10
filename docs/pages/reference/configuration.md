@@ -171,7 +171,7 @@ jobs:
 
 ### Job factories
 
-A `jobs` key that contains `{token}` placeholders is a **job factory** — a templated job entry, mirroring a Kedro dataset factory. By default the jobs are derived from your **pipeline namespaces**, the same way a dataset factory takes its demand from pipeline node references. You write a few factories; the concrete jobs come from the namespaces of each factory's pipeline. No target list is required:
+A `jobs` key that contains `{token}` placeholders is a **job factory** — a templated job entry, mirroring a Kedro dataset factory. By default the jobs are derived from your **pipeline namespaces**, the same way a dataset factory's concrete datasets are determined by pipeline node references. You write a few factories; the concrete jobs come from the namespaces of each factory's pipeline. No target list is required:
 
 ```yaml
 jobs:

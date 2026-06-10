@@ -11,9 +11,9 @@ from your pipelines.
 
 If you have used Kedro [dataset factories](https://docs.kedro.org/en/stable/data/kedro_dataset_factories.html),
 you already know the idea. A dataset factory is a catalog entry whose key is a
-pattern; Kedro never asks you to list the concrete datasets, because the *demand*
-comes from the pipelines — the datasets a factory produces are exactly those its
-nodes reference.
+pattern; Kedro never asks you to list the concrete datasets, because they are
+*determined by the pipelines* — the datasets a factory produces are exactly those
+its nodes reference.
 
 Job factories apply the same principle to Azure ML jobs:
 
@@ -27,7 +27,7 @@ produces are derived from the **namespaces of its pipeline** — there is no lis
 of concrete jobs to maintain. Add a namespaced variant to your pipelines and its
 jobs appear automatically.
 
-## Demand comes from the pipeline namespaces
+## Jobs are derived from the pipeline namespaces
 
 Each factory declares a `node_namespaces` template. The tokens in that template,
 and their depth, tell the plugin how to read the pipeline's namespaces:
