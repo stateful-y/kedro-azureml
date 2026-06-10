@@ -43,6 +43,9 @@ azureml = "kedro_azureml_pipeline.cli.commands:commands"
 azure_local_run_hook = "kedro_azureml_pipeline.hooks.local_run:azureml_local_run_hook"
 mlflow_azureml_hook = "kedro_azureml_pipeline.hooks.mlflow:mlflow_azureml_hook"
 
+[project.entry-points."kedro_azureml_pipeline.job_target_providers"]
+inline = "kedro_azureml_pipeline.factory:InlineTargetProvider"
+
 [dependency-groups]
 dev = [
     {include-group = "tests"},

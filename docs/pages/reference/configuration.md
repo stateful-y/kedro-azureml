@@ -5,11 +5,13 @@ All plugin settings live in `conf/<env>/azureml.yml`. The file is parsed into [`
 ## Top-level structure
 
 ```yaml
-workspace:    # required
-compute:      # required
-execution:    # optional
-schedules:    # optional
-jobs:         # optional
+workspace:             # required
+compute:               # required
+execution:             # optional
+schedules:             # optional
+jobs:                  # optional
+job_target_provider:   # optional (default "pipelines"; "inline" reads job_targets)
+job_targets:           # optional (inline bindings; overrides the default)
 ```
 
 ---
@@ -168,6 +170,47 @@ jobs:
 | `schedule` | `null` | Inline `ScheduleConfig`, named schedule string, or `null` for ad-hoc |
 | `retry` | `null` | Retry settings applied to every step (see below) |
 | `description` | `null` | Human-readable job description |
+
+### Job factories
+
+A `jobs` key that contains `{token}` placeholders is a **job factory** — a templated job entry, mirroring a Kedro dataset factory. By default the jobs are derived from your **pipeline namespaces**, the same way a dataset factory takes its demand from pipeline node references. You write a few factories; the concrete jobs come from the namespaces of each factory's pipeline. No target list is required:
+
+```yaml
+jobs:
+  # one job per namespace of the `inference` pipeline; day-ahead gets two triggers
+  "{product}-{group}-{variant}-inference":
+    schedule: ["da-vintages", "da-vintage-930"]
+    pipeline:
+      pipeline_name: "inference"
+      node_namespaces: ["{product}.{group}.{variant}"]
+  # a more-specific factory overrides the schedule for one product
+  "rt_energy-{group}-{variant}-inference":
+    schedule: "rt-hourly"
+    pipeline:
+      pipeline_name: "inference"
+      node_namespaces: ["{product}.{group}.{variant}"]
+  # literal (non-factory) jobs are kept verbatim and take precedence
+  snapshot:
+    pipeline: {pipeline_name: "snapshot"}
+```
+
+**Bindings come from the pipeline.** For each factory, the `node_namespaces` template defines the token names and their namespace depth; the plugin enumerates the distinct namespaces of `pipeline_name` at that depth and binds the tokens positionally (e.g. `da_energy.hub.champion` → `product=da_energy, group=hub, variant=champion`). One job is produced per binding. Adding a variant or group to your pipelines makes its jobs appear with no `azureml.yml` edit. A factory name token that is absent from its `node_namespaces` template is a configuration error.
+
+**Resolution is forward-only.** Job names are produced *only* by rendering tokens into a factory; names are never parsed back. When more than one factory renders the same name, the **most-specific** one (most literal, non-token characters) supplies the config — so per-product variation like a different schedule is expressed by a more-specific factory rather than an override table. Literal (non-factory) jobs take precedence over any factory.
+
+`{token}` (factory) and `${...}` (OmegaConf) use different syntax and coexist. Because the variant is a namespace level, jobs are filtered by `node_namespaces` alone — no `tags` needed. Job names use the namespace form of each token verbatim (e.g. `da_energy-hub-champion-inference`).
+
+* **`kedro azureml run -j <name>`** renders all bindings (overlaying literal jobs) and looks the requested name up; an unknown name is an error listing the available jobs.
+* **`kedro azureml schedule`** (no `-j`) deploys one job per binding, with one schedule trigger per `schedule` list entry.
+
+#### Overriding the binding source
+
+The binding source is the `pipelines` provider by default. To supply bindings explicitly instead (for cases not derivable from pipelines), set a top-level `job_targets` list — a non-empty list switches to the built-in `inline` provider. Providers are resolved from the `kedro_azureml_pipeline.job_target_providers` entry-point group; register your own and select it with `job_target_provider` to plug in a custom source.
+
+| Field | Default | Description |
+|---|---|---|
+| `job_target_provider` | `"pipelines"` | Registered target provider. `pipelines` derives bindings from namespaces; `inline` reads `job_targets` |
+| `job_targets` | `[]` | Optional inline token bindings (incl. `job`); a non-empty list forces the `inline` provider |
 
 ### `retry`
 

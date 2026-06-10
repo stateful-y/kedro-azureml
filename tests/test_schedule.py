@@ -482,6 +482,59 @@ class TestScheduleCLI:
             assert "created/updated successfully" in result.output
             assert "All schedules created successfully" in result.output
 
+    def test_schedule_list_deploys_one_trigger_per_entry(
+        self,
+        tagged_pipeline,
+        dummy_plugin_config,
+        multi_catalog,
+        patched_kedro_package,
+        cli_context,
+        tmp_path,
+    ):
+        """A job with a list schedule deploys one named schedule per entry."""
+        from click.testing import CliRunner
+
+        import kedro_azureml_pipeline.cli.commands as cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
+        from kedro_azureml_pipeline.scheduler import AzureMLScheduleClient
+
+        create_kedro_conf_dirs(tmp_path)
+        dummy_plugin_config.schedules = {
+            "daily": ScheduleConfig(cron=CronScheduleConfig(expression="0 6 * * *")),
+        }
+        # A named ref (str → name suffix) and an inline ScheduleConfig (→ index suffix).
+        dummy_plugin_config.jobs = {
+            "test_job": JobConfig(
+                pipeline=PipelineFilterOptions(pipeline_name="__default__"),
+                schedule=["daily", ScheduleConfig(cron=CronScheduleConfig(expression="30 9 * * *"))],
+            ),
+        }
+
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+        mock_mgr.context.params = {}
+        mock_mgr.context.catalog = multi_catalog
+        mock_mgr.context.config_loader.__getitem__ = MagicMock(side_effect=KeyError("mlflow"))
+
+        created_names = []
+
+        def _capture(schedule, workspace):
+            created_names.append(schedule.name)
+            return schedule
+
+        with (
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=tagged_pipeline),
+            patch.object(Path, "cwd", return_value=tmp_path),
+            patch.object(AzureMLScheduleClient, "create_or_update_schedule", side_effect=_capture),
+        ):
+            runner = CliRunner()
+            result = runner.invoke(cli.schedule, ["-j", "test_job"], obj=cli_context)
+
+        assert result.exit_code == 0, result.output
+        assert created_names == ["test_job-daily", "test_job-1"]
+
     def test_schedule_sets_experiment_name_on_pipeline_job(
         self,
         tagged_pipeline,
