@@ -7,6 +7,20 @@ This guide shows how to compile Kedro pipelines into Azure ML Pipeline YAML defi
 - The Kedro AzureML Pipeline plugin installed and configured (see [Getting Started](../tutorials/getting-started.md))
 - At least one job defined under `jobs:` in `azureml.yml`
 
+## Discover the available jobs
+
+When jobs are defined as [factories](define-job-factories.md), the concrete jobs
+are derived from the pipeline namespaces and are not written in `azureml.yml`. To
+see what exists — and therefore what names you can pass to `compile`, `run`, and
+`schedule` — list them (the job analogue of `kedro catalog resolve-patterns`):
+
+```bash
+kedro azureml resolve-patterns          # concrete jobs: names, namespaces, schedules
+kedro azureml list-patterns             # the factory keys themselves
+```
+
+Add `-e <env>` to inspect a specific environment. Neither command contacts Azure ML.
+
 ## Compile a job to YAML
 
 ```bash

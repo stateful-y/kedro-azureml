@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import click
 
-from kedro_azureml_pipeline.factory import enumerate_jobs, resolve_jobs
+from kedro_azureml_pipeline.factory import enumerate_jobs, is_factory, resolve_jobs
 from kedro_azureml_pipeline.generator import AzureMLPipelineGenerator
 from kedro_azureml_pipeline.manager import KedroContextManager
 from kedro_azureml_pipeline.utils import CliContext
@@ -727,3 +727,54 @@ def schedule_jobs(
         click.echo(f"\nSchedule summary: {succeeded} succeeded, {failed} failed (out of {len(results)} jobs)")
 
         return all(results.values())
+
+
+def resolve_patterns(ctx: CliContext) -> None:
+    """Print the concrete jobs derived from the job factories and pipelines.
+
+    The analogue of ``kedro catalog resolve-patterns``: renders every job factory
+    against the active pipeline namespaces (plus any literal jobs) and lists the
+    resulting job names with their schedule and node namespaces. No Azure ML
+    connection is made.
+
+    Parameters
+    ----------
+    ctx : CliContext
+        CLI context containing the Kedro environment and metadata.
+    """
+    from kedro.framework.project import pipelines
+
+    with KedroContextManager(env=ctx.env) as mgr:
+        jobs = enumerate_jobs(mgr.plugin_config, pipelines)
+        if not jobs:
+            click.echo("No jobs resolved (no job factories or literal jobs in azureml.yml).")
+            return
+        for name in sorted(jobs):
+            job = jobs[name]
+            namespaces = ", ".join(job.pipeline.node_namespaces or [])
+            detail = [f"pipeline={job.pipeline.pipeline_name}"]
+            if namespaces:
+                detail.append(f"namespaces=[{namespaces}]")
+            if job.schedule is not None:
+                detail.append(f"schedule={job.schedule}")
+            click.echo(f"{name}  ({'; '.join(detail)})")
+
+
+def list_patterns(ctx: CliContext) -> None:
+    """List the job-factory keys (``jobs`` keys containing ``{token}`` placeholders).
+
+    The analogue of ``kedro catalog list-patterns``. Literal (non-factory) job
+    keys are not listed.
+
+    Parameters
+    ----------
+    ctx : CliContext
+        CLI context containing the Kedro environment and metadata.
+    """
+    with KedroContextManager(env=ctx.env) as mgr:
+        patterns = sorted(key for key in mgr.plugin_config.jobs if is_factory(key))
+        if not patterns:
+            click.echo("No job factory patterns defined in azureml.yml.")
+            return
+        for pattern in patterns:
+            click.echo(pattern)

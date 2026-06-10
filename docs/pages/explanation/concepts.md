@@ -60,6 +60,10 @@ The full Kedro hook lifecycle fires during remote execution. Each pipeline step 
 
 Pipelines can run on automated schedules defined in configuration. Cron expressions and recurrence patterns are supported. Schedules are created as Azure ML `JobSchedule` objects, so they run independently in the cloud without requiring a local process or external orchestrator.
 
+### Job factories
+
+A `jobs` key containing `{token}` placeholders is a job factory: the concrete jobs are derived from the Kedro pipeline namespaces, the same way a dataset factory takes its demand from pipeline node references. This expresses a whole family of namespaced jobs (per product, group, or variant) with one templated entry, so the job set tracks the pipelines automatically. See [Job Factories](job-factories.md).
+
 ## Limitations and considerations
 
 - **Feature parity**: Azure ML's pipeline model and Kedro's pipeline model may not overlap perfectly. Open an issue if you encounter a Kedro pattern that doesn't translate well to Azure ML, or if an Azure ML feature is missing from the plugin's capabilities.

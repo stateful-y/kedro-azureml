@@ -165,7 +165,7 @@ jobs:
 | `experiment_name` | `null` | Azure ML experiment name |
 | `display_name` | `null` | Display name shown in Azure ML Studio |
 | `compute` | `null` | Named compute entry; falls back to `__default__` |
-| `schedule` | `null` | Inline `ScheduleConfig`, named schedule string, or `null` for ad-hoc |
+| `schedule` | `null` | Inline `ScheduleConfig`, named schedule string, a **list** of either (one trigger deployed per entry), or `null` for ad-hoc |
 | `retry` | `null` | Retry settings applied to every step (see below) |
 | `description` | `null` | Human-readable job description |
 

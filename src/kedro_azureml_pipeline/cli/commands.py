@@ -15,8 +15,10 @@ from kedro_azureml_pipeline.cli.functions import (
     compile_job_pipelines,
     delete_schedules,
     dynamic_import_job_schedule_func_from_str,
+    list_patterns,
     parse_extra_env_params,
     parse_runtime_params,
+    resolve_patterns,
     run_jobs,
     schedule_jobs,
     verify_configuration_directory_for_azure,
@@ -443,3 +445,23 @@ def execute(
     with KedroContextManager(env=ctx.env, runtime_params=parameters) as mgr:
         runner = AzurePipelinesRunner(data_paths=data_paths)
         mgr.session.run(pipeline, node_names=[node], runner=runner)
+
+
+@azureml_group.command("resolve-patterns")
+@click.pass_obj
+def resolve_patterns_command(ctx: CliContext):
+    """List the concrete jobs derived from job factories and the pipelines.
+
+    The job analogue of ``kedro catalog resolve-patterns``.
+    """
+    resolve_patterns(ctx)
+
+
+@azureml_group.command("list-patterns")
+@click.pass_obj
+def list_patterns_command(ctx: CliContext):
+    """List the job-factory patterns (``jobs`` keys with ``{token}`` placeholders).
+
+    The job analogue of ``kedro catalog list-patterns``.
+    """
+    list_patterns(ctx)

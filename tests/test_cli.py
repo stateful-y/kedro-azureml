@@ -911,3 +911,84 @@ class TestRun:
                 dry_run=True,
             )
             assert result is True
+
+
+class TestPatterns:
+    """Tests for ``kedro azureml resolve-patterns`` and ``list-patterns``."""
+
+    def _mgr(self, dummy_plugin_config):
+        from kedro_azureml_pipeline.config import JobConfig, PipelineFilterOptions
+        from kedro_azureml_pipeline.manager import KedroContextManager
+
+        dummy_plugin_config.jobs = {
+            "{product}-{group}-{variant}-inference": JobConfig(
+                pipeline=PipelineFilterOptions(
+                    pipeline_name="inference", node_namespaces=["{product}.{group}.{variant}"]
+                ),
+                schedule="da-vintages",
+            ),
+            "snapshot": JobConfig(pipeline=PipelineFilterOptions(pipeline_name="snapshot")),
+        }
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+        return mock_mgr, KedroContextManager
+
+    def _fake_pipelines(self):
+        from types import SimpleNamespace
+
+        node = SimpleNamespace(namespace="da_energy.hub.champion")
+        return {"inference": SimpleNamespace(nodes=[node])}
+
+    def test_resolve_patterns_lists_derived_and_literal_jobs(
+        self, patched_kedro_package, cli_context, dummy_plugin_config
+    ):
+        mock_mgr, KedroContextManager = self._mgr(dummy_plugin_config)
+        with (
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro.framework.project.pipelines", self._fake_pipelines()),
+        ):
+            result = CliRunner().invoke(cli.resolve_patterns_command, [], obj=cli_context)
+        assert result.exit_code == 0, result.output
+        assert "da_energy-hub-champion-inference" in result.output  # derived
+        assert "snapshot" in result.output  # literal included
+
+    def test_list_patterns_lists_factory_keys_only(self, patched_kedro_package, cli_context, dummy_plugin_config):
+        mock_mgr, KedroContextManager = self._mgr(dummy_plugin_config)
+        with (
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+        ):
+            result = CliRunner().invoke(cli.list_patterns_command, [], obj=cli_context)
+        assert result.exit_code == 0, result.output
+        assert "{product}-{group}-{variant}-inference" in result.output
+        assert "snapshot" not in result.output  # literal jobs are not patterns
+
+    def test_resolve_patterns_empty(self, patched_kedro_package, cli_context, dummy_plugin_config):
+        from kedro_azureml_pipeline.manager import KedroContextManager
+
+        dummy_plugin_config.jobs = {}
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+        with (
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro.framework.project.pipelines", {}),
+        ):
+            result = CliRunner().invoke(cli.resolve_patterns_command, [], obj=cli_context)
+        assert result.exit_code == 0, result.output
+        assert "No jobs resolved" in result.output
+
+    def test_list_patterns_empty(self, patched_kedro_package, cli_context, dummy_plugin_config):
+        from kedro_azureml_pipeline.manager import KedroContextManager
+
+        dummy_plugin_config.jobs = {}
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+        with (
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+        ):
+            result = CliRunner().invoke(cli.list_patterns_command, [], obj=cli_context)
+        assert result.exit_code == 0, result.output
+        assert "No job factory patterns" in result.output
