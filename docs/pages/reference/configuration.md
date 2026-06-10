@@ -203,6 +203,8 @@ jobs:
 
 There is no separate target list or provider key: the jobs are always derived from the pipeline namespaces, so adding a variant to your pipelines yields its job with no config edit.
 
+For the dataset-factory analogy and why resolution is forward-only, see [Job Factories](../explanation/job-factories.md); for a step-by-step recipe, see [Define jobs with factories](../how-to/define-job-factories.md).
+
 ### `retry`
 
 Optional retry settings applied to every command step in the job. Maps to [`azure.ai.ml.entities.RetrySettings`](https://learn.microsoft.com/en-us/python/api/azure-ai-ml/azure.ai.ml.entities.retrysettings).
