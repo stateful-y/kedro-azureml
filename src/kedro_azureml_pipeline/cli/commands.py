@@ -460,7 +460,7 @@ def resolve_patterns_command(ctx: CliContext):
 @azureml_group.command("list-patterns")
 @click.pass_obj
 def list_patterns_command(ctx: CliContext):
-    """List the job-factory patterns (``jobs`` keys with ``{token}`` placeholders).
+    """List the job-factory patterns (``jobs`` keys with ``{placeholder}`` markers).
 
     The job analogue of ``kedro catalog list-patterns``.
     """

@@ -510,7 +510,7 @@ class KedroAzureMLConfig(BaseModel):
     )
     jobs: dict[str, JobConfig] = Field(
         default_factory=dict,
-        description="Named job definitions. A key containing '{token}' placeholders is a job factory whose jobs are derived from the Kedro pipeline namespaces.",
+        description="Named job definitions. A key containing '{placeholder}' markers is a job factory whose jobs are derived from the Kedro pipeline namespaces.",
     )
 
 

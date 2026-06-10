@@ -729,6 +729,27 @@ def schedule_jobs(
         return all(results.values())
 
 
+def _format_schedule(schedule: "ScheduleConfig | str | list[ScheduleConfig | str]") -> str:
+    """Render a job's ``schedule`` (one, a list, or a named ref) as a compact summary.
+
+    Named references print as-is; inline schedules print as ``cron:<expr>`` or
+    ``recurrence:every <n> <freq>(s)``. Used only for the ``resolve-patterns``
+    listing, so the output is human-readable rather than round-trippable.
+    """
+    refs = schedule if isinstance(schedule, list) else [schedule]
+    parts: list[str] = []
+    for ref in refs:
+        if isinstance(ref, str):
+            parts.append(ref)
+        elif ref.cron:
+            parts.append(f"cron:{ref.cron.expression}")
+        else:
+            rec = ref.recurrence
+            assert rec is not None  # ScheduleConfig requires exactly one of cron/recurrence
+            parts.append(f"recurrence:every {rec.interval} {rec.frequency}(s)")
+    return ", ".join(parts)
+
+
 def resolve_patterns(ctx: CliContext) -> None:
     """Print the concrete jobs derived from the job factories and pipelines.
 
@@ -755,13 +776,13 @@ def resolve_patterns(ctx: CliContext) -> None:
             detail = [f"pipeline={job.pipeline.pipeline_name}"]
             if namespaces:
                 detail.append(f"namespaces=[{namespaces}]")
-            if job.schedule is not None:
-                detail.append(f"schedule={job.schedule}")
+            if job.schedule:
+                detail.append(f"schedule={_format_schedule(job.schedule)}")
             click.echo(f"{name}  ({'; '.join(detail)})")
 
 
 def list_patterns(ctx: CliContext) -> None:
-    """List the job-factory keys (``jobs`` keys containing ``{token}`` placeholders).
+    """List the job-factory keys (``jobs`` keys containing ``{placeholder}`` markers).
 
     The analogue of ``kedro catalog list-patterns``. Literal (non-factory) job
     keys are not listed.

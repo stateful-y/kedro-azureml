@@ -977,6 +977,55 @@ class TestScheduleDeleteCLI:
             assert "deleted" in result.output
             mock_delete.assert_called_once()
 
+    def test_delete_multi_schedule_deletes_each_trigger(
+        self,
+        dummy_plugin_config,
+        patched_kedro_package,
+        cli_context,
+        tmp_path,
+    ):
+        """Deleting a job with a list schedule removes one trigger per entry.
+
+        Pins the create/delete naming contract: deletion must mirror the names
+        produced at creation (``_schedule_entries``) so no trigger is orphaned.
+        """
+        from click.testing import CliRunner
+
+        import kedro_azureml_pipeline.cli.commands as cli
+        from kedro_azureml_pipeline.manager import KedroContextManager
+        from kedro_azureml_pipeline.scheduler import AzureMLScheduleClient
+
+        create_kedro_conf_dirs(tmp_path)
+        # A named ref (str -> name suffix) and an inline ScheduleConfig (-> index suffix),
+        # the same shapes the create path is tested against.
+        dummy_plugin_config.jobs = {
+            "test_job": JobConfig(
+                pipeline=PipelineFilterOptions(pipeline_name="__default__"),
+                schedule=["daily", ScheduleConfig(cron=CronScheduleConfig(expression="30 9 * * *"))],
+            ),
+        }
+
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+
+        deleted_names: list[str] = []
+
+        with (
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch.object(Path, "cwd", return_value=tmp_path),
+            patch.object(
+                AzureMLScheduleClient,
+                "delete_schedule",
+                side_effect=lambda name, workspace: deleted_names.append(name),
+            ),
+        ):
+            runner = CliRunner()
+            result = runner.invoke(cli.schedule, ["--delete", "-j", "test_job"], obj=cli_context)
+
+        assert result.exit_code == 0, result.output
+        assert deleted_names == ["test_job-daily", "test_job-1"]
+
     def test_delete_failure_exit_code(
         self,
         dummy_plugin_config,

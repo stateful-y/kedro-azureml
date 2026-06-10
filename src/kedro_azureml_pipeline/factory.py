@@ -73,6 +73,12 @@ def _derive_bindings(config: KedroAzureMLConfig, pipelines: Mapping[str, Any] | 
     of the factory's ``pipeline_name`` pipeline at that depth become the bindings,
     each tagged with the factory's job-type suffix. *pipelines* is the Kedro
     pipeline registry; when ``None`` the global registry is used.
+
+    Only the *first* ``node_namespaces`` entry is the binding axis: it sets the
+    tokens and depth used here. Any further entries are not used for derivation;
+    they still render per binding (in :func:`_render_job`) as the rendered job's
+    runtime namespace filters, so a factory can derive its axis from the first
+    entry and carry extra static namespace filters in the rest.
     """
     if pipelines is None:
         from kedro.framework.project import pipelines  # noqa: PLC0415

@@ -94,6 +94,15 @@ Scheduling deploys one trigger per entry. A single schedule keeps the job's name
 with a list, each trigger is named `{job}-{schedule}`. Deleting the job's
 schedules (`schedule --delete -j inference`) removes all of them.
 
+!!! warning "Trigger names track the list"
+    Trigger names are derived from the list, so editing it can orphan triggers
+    already deployed in Azure ML. Going from a single schedule to a list renames
+    the original (`inference` becomes `inference-nightly`). Inline schedules in a
+    list are named by position (`inference-0`, `inference-1`), so reordering them
+    renames them. Prefer named references (`schedule: [nightly, midday]`) over
+    inline blocks in a list, and re-run `schedule -j <job>` after editing so the
+    new names are deployed; prune any orphaned triggers in Azure ML Studio.
+
 ## Preview without creating
 
 Use `--dry-run` to inspect what will be created without calling Azure ML:

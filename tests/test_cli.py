@@ -953,6 +953,38 @@ class TestPatterns:
         assert "da_energy-hub-champion-inference" in result.output  # derived
         assert "snapshot" in result.output  # literal included
 
+    def test_resolve_patterns_formats_schedules(self, patched_kedro_package, cli_context, dummy_plugin_config):
+        """A list schedule renders as a compact summary (named ref, cron, recurrence)."""
+        from kedro_azureml_pipeline.config import (
+            CronScheduleConfig,
+            JobConfig,
+            PipelineFilterOptions,
+            RecurrenceScheduleConfig,
+            ScheduleConfig,
+        )
+        from kedro_azureml_pipeline.manager import KedroContextManager
+
+        dummy_plugin_config.jobs = {
+            "multi": JobConfig(
+                pipeline=PipelineFilterOptions(pipeline_name="__default__"),
+                schedule=[
+                    "da-vintages",
+                    ScheduleConfig(cron=CronScheduleConfig(expression="30 9 * * *")),
+                    ScheduleConfig(recurrence=RecurrenceScheduleConfig(frequency="day", interval=1)),
+                ],
+            ),
+        }
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+        with (
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro.framework.project.pipelines", {}),
+        ):
+            result = CliRunner().invoke(cli.resolve_patterns_command, [], obj=cli_context)
+        assert result.exit_code == 0, result.output
+        assert "schedule=da-vintages, cron:30 9 * * *, recurrence:every 1 day(s)" in result.output
+
     def test_list_patterns_lists_factory_keys_only(self, patched_kedro_package, cli_context, dummy_plugin_config):
         mock_mgr, KedroContextManager = self._mgr(dummy_plugin_config)
         with (
