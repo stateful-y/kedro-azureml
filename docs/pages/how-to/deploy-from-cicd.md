@@ -85,12 +85,21 @@ def notify_slack(job_info):
 kedro azureml run -j training --on-job-scheduled myproject.callbacks:notify_slack
 ```
 
-## Submit multiple jobs
+## Submit a dependent batch (fail-fast)
 
-Pass `-j` multiple times to submit several jobs in one invocation:
+Pass `-j` multiple times to submit several jobs in one invocation. They are submitted **in the order given**, and submission is **fail-fast**: if a job fails, the remaining jobs are skipped instead of launched.
 
 ```bash
-kedro azureml run -j training -j validation --wait-for-completion
+kedro azureml run -j snapshot -j training -j inference --wait-for-completion
+```
+
+This is the right ordering when later jobs depend on earlier ones (here `inference` consumes `training`'s model, which consumes `snapshot`'s data). If `training` fails, `inference` is skipped and the command exits non-zero, so a CI deploy step fails loudly rather than launching a job that would read missing outputs. See [the CLI reference](../reference/cli.md#batch-submission-is-fail-fast) for the exact summary output.
+
+To submit jobs that do **not** depend on each other, so one failure does not skip the rest, run them as separate steps:
+
+```bash
+kedro azureml run -j daily_report
+kedro azureml run -j weekly_rollup
 ```
 
 ## Override workspace per environment

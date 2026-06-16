@@ -915,6 +915,128 @@ class TestRun:
             assert result.exit_code == 1
             assert "0 succeeded" in result.output
 
+    def test_run_aborts_remaining_jobs_after_failure(
+        self,
+        patched_kedro_package,
+        cli_context,
+        dummy_pipeline,
+        dummy_plugin_config,
+        tmp_path: Path,
+    ):
+        """A failed job aborts the batch: later jobs are skipped, not submitted."""
+        from kedro_azureml_pipeline.client import AzureMLPipelinesClient
+        from kedro_azureml_pipeline.config import JobConfig, PipelineFilterOptions
+        from kedro_azureml_pipeline.manager import KedroContextManager
+
+        create_kedro_conf_dirs(tmp_path)
+        dummy_plugin_config.jobs = {
+            "job_a": JobConfig(pipeline=PipelineFilterOptions(pipeline_name="__default__")),
+            "job_b": JobConfig(pipeline=PipelineFilterOptions(pipeline_name="__default__")),
+        }
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+        mock_mgr.context.params = {}
+        mock_mgr.context.catalog = MagicMock()
+        mock_mgr.context.config_loader.__getitem__ = MagicMock(side_effect=KeyError("mlflow"))
+
+        with (
+            patch.dict("kedro.framework.project.pipelines", {"__default__": dummy_pipeline}),
+            patch.object(Path, "cwd", return_value=tmp_path),
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
+            patch.object(AzureMLPipelinesClient, "run", return_value=False) as run_patched,
+        ):
+            runner = CliRunner()
+            result = runner.invoke(cli.run, ["-j", "job_a", "-j", "job_b"], obj=cli_context)
+            assert result.exit_code == 1
+            # Only the first job is submitted; the second is skipped after the failure.
+            assert run_patched.call_count == 1
+            assert "skipping 1 remaining job(s): job_b" in result.output
+            assert "1 skipped" in result.output
+
+    def test_run_aborts_after_middle_failure_in_batch(
+        self,
+        patched_kedro_package,
+        cli_context,
+        dummy_pipeline,
+        dummy_plugin_config,
+        tmp_path: Path,
+    ):
+        """In a 3-job batch, a mid-batch failure submits the prefix and skips the rest."""
+        from kedro_azureml_pipeline.client import AzureMLPipelinesClient
+        from kedro_azureml_pipeline.config import JobConfig, PipelineFilterOptions
+        from kedro_azureml_pipeline.manager import KedroContextManager
+
+        create_kedro_conf_dirs(tmp_path)
+        dummy_plugin_config.jobs = {
+            "job_a": JobConfig(pipeline=PipelineFilterOptions(pipeline_name="__default__")),
+            "job_b": JobConfig(pipeline=PipelineFilterOptions(pipeline_name="__default__")),
+            "job_c": JobConfig(pipeline=PipelineFilterOptions(pipeline_name="__default__")),
+        }
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+        mock_mgr.context.params = {}
+        mock_mgr.context.catalog = MagicMock()
+        mock_mgr.context.config_loader.__getitem__ = MagicMock(side_effect=KeyError("mlflow"))
+
+        with (
+            patch.dict("kedro.framework.project.pipelines", {"__default__": dummy_pipeline}),
+            patch.object(Path, "cwd", return_value=tmp_path),
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
+            # job_a succeeds, job_b fails; job_c must never be submitted.
+            patch.object(AzureMLPipelinesClient, "run", side_effect=[True, False]) as run_patched,
+        ):
+            runner = CliRunner()
+            result = runner.invoke(cli.run, ["-j", "job_a", "-j", "job_b", "-j", "job_c"], obj=cli_context)
+            assert result.exit_code == 1
+            assert run_patched.call_count == 2
+            assert "skipping 1 remaining job(s): job_c" in result.output
+            assert "1 succeeded, 1 failed, 1 skipped" in result.output
+
+    def test_run_last_job_failure_does_not_abort(
+        self,
+        patched_kedro_package,
+        cli_context,
+        dummy_pipeline,
+        dummy_plugin_config,
+        tmp_path: Path,
+    ):
+        """When the failing job is last, every job is submitted and no abort notice is printed."""
+        from kedro_azureml_pipeline.client import AzureMLPipelinesClient
+        from kedro_azureml_pipeline.config import JobConfig, PipelineFilterOptions
+        from kedro_azureml_pipeline.manager import KedroContextManager
+
+        create_kedro_conf_dirs(tmp_path)
+        dummy_plugin_config.jobs = {
+            "job_a": JobConfig(pipeline=PipelineFilterOptions(pipeline_name="__default__")),
+            "job_b": JobConfig(pipeline=PipelineFilterOptions(pipeline_name="__default__")),
+        }
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+        mock_mgr.context.params = {}
+        mock_mgr.context.catalog = MagicMock()
+        mock_mgr.context.config_loader.__getitem__ = MagicMock(side_effect=KeyError("mlflow"))
+
+        with (
+            patch.dict("kedro.framework.project.pipelines", {"__default__": dummy_pipeline}),
+            patch.object(Path, "cwd", return_value=tmp_path),
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
+            # job_a succeeds, job_b (last) fails: nothing left to skip.
+            patch.object(AzureMLPipelinesClient, "run", side_effect=[True, False]) as run_patched,
+        ):
+            runner = CliRunner()
+            result = runner.invoke(cli.run, ["-j", "job_a", "-j", "job_b"], obj=cli_context)
+            assert result.exit_code == 1
+            assert run_patched.call_count == 2
+            assert "Aborting batch" not in result.output
+            assert "skipped" not in result.output
+            assert "1 succeeded, 1 failed" in result.output
+
     def test_run_display_name_assignment(
         self,
         patched_kedro_package,

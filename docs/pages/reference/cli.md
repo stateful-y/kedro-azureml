@@ -60,6 +60,20 @@ Submits named job(s) to Azure ML managed compute immediately, ignoring any confi
 | `--load-versions KEY:VERSION` | Pin a dataset to a specific Kedro-versioned version. Repeatable. |
 | `--on-job-scheduled MODULE:FUNC` | Callback invoked after each job is submitted (e.g. `mymodule:notify`) |
 
+### Batch submission is fail-fast
+
+When you pass several `-j` names (or run all configured jobs), they are submitted **in the order given**, one after another. Jobs in a batch usually feed each other (for example `snapshot` then `training` then `inference`), so if one job fails to submit, `run` **stops immediately** and skips every remaining job rather than launching work that would consume missing outputs.
+
+The skipped jobs are listed, and the final summary counts succeeded, failed, and skipped jobs:
+
+```text
+Aborting batch: 'training' failed; skipping 1 remaining job(s): inference
+
+Run summary: 1 succeeded, 1 failed, 1 skipped (out of 3 selected)
+```
+
+The command exits non-zero if any job failed **or** was skipped. To submit jobs independently so that one failure does not hold back the others, invoke `run` once per job instead of passing multiple `-j` names.
+
 ---
 
 ## `kedro azureml schedule`

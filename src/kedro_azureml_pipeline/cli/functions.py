@@ -497,8 +497,9 @@ def run_jobs(
         prepared,
     ):
         results: dict[str, bool] = {}
+        job_order = list(selected_jobs)
 
-        for job_name in selected_jobs:
+        for index, job_name in enumerate(job_order):
             try:
                 job_experiment_name, pipeline_job, job_config = prepared[job_name]
                 workspace = config.workspace.resolve(workspace_override or job_config.workspace)
@@ -534,11 +535,32 @@ def run_jobs(
                 logger.exception(f"Error running job '{job_name}'")
                 results[job_name] = False
 
+            # Fail-fast: jobs in a batch are submitted in order and a later job
+            # typically consumes an earlier one's output (e.g. snapshot -> training
+            # -> inference). Once a job fails there is no point submitting the rest,
+            # so stop and report the ones we skipped.
+            if not results[job_name]:
+                skipped = job_order[index + 1 :]
+                if skipped:
+                    click.echo(
+                        click.style(
+                            f"Aborting batch: '{job_name}' failed; "
+                            f"skipping {len(skipped)} remaining job(s): {', '.join(skipped)}",
+                            fg="red",
+                        )
+                    )
+                break
+
         succeeded = sum(1 for v in results.values() if v)
         failed = sum(1 for v in results.values() if not v)
-        click.echo(f"\nRun summary: {succeeded} succeeded, {failed} failed (out of {len(results)} jobs)")
+        skipped_count = len(job_order) - len(results)
+        summary = f"\nRun summary: {succeeded} succeeded, {failed} failed"
+        if skipped_count:
+            summary += f", {skipped_count} skipped"
+        summary += f" (out of {len(job_order)} selected)"
+        click.echo(summary)
 
-        return all(results.values())
+        return all(results.values()) and not skipped_count
 
 
 def _schedule_entries(
