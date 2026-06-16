@@ -29,6 +29,16 @@ AZURE_CLIENT_SECRET="<your-client-secret>"
 
 See [How to authenticate](authenticate.md) for service principal creation, role assignments, and troubleshooting.
 
+## Validate before deploying
+
+Before a deploy step ever contacts Azure ML, gate it on a credential-free compile check:
+
+```bash
+kedro azureml compile --check --all
+```
+
+`--check` compiles every resolved job in memory, writes no files, and exits non-zero if any job fails to compile, so a misconfigured `azureml.yml` or a broken pipeline fails the build instead of the deploy. Because it needs no Azure ML credentials and submits nothing, it is safe to run on every pull request, before secrets are available. See the [`compile` CLI reference](../reference/cli.md#kedro-azureml-compile) for the flag details and [Compile and inspect](compile-and-inspect.md#validate-that-every-job-compiles) for a walkthrough.
+
 ## GitHub Actions example
 
 ```yaml
@@ -51,6 +61,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
 
       - run: uv sync --no-dev
+
+      - name: Validate jobs compile
+        run: uv run kedro azureml compile --check --all
 
       - name: Submit pipeline
         run: uv run kedro azureml run -j training --wait-for-completion
@@ -96,4 +109,5 @@ kedro azureml run -j training --env prod
 
 - [Configuration reference](../reference/configuration.md#workspace) for workspace definitions
 - [CLI reference](../reference/cli.md#kedro-azureml-run) for all `run` flags
+- [Compile and inspect](compile-and-inspect.md#validate-that-every-job-compiles) for the `compile --check --all` validation gate
 - [How to configure multiple workspaces](configure-multiple-workspaces.md) for workspace management

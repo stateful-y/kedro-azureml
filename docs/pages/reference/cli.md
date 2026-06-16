@@ -22,15 +22,17 @@ No flags.
 ## `kedro azureml compile`
 
 ```text
-kedro azureml compile -j JOB_NAME [options]
+kedro azureml compile (-j JOB_NAME | --all) [options]
 ```
 
-Compiles named job(s) into Azure ML pipeline YAML definitions without submitting them. See [Compile and inspect](../how-to/compile-and-inspect.md) for a walkthrough.
+Compiles job(s) into Azure ML pipeline YAML definitions without submitting them. Select jobs with one or more `-j` names, or compile every resolved job with `--all`. Add `--check` to validate that jobs compile without writing any files. See [Compile and inspect](../how-to/compile-and-inspect.md) for a walkthrough.
 
 | Flag | Description |
 |---|---|
-| `-j JOB_NAME` | Job name from `jobs` in `azureml.yml`. Required. Repeatable for multiple jobs. |
-| `-o OUTPUT` | Output YAML file path (default: `pipeline.yaml`) |
+| `-j JOB_NAME` | Job name from `jobs` in `azureml.yml`. Required unless `--all` is given (provide one of `-j` or `--all`). Repeatable for multiple jobs. |
+| `--all` | Compile every resolved job, both literal and factory-derived. Mutually exclusive with `-j`. |
+| `--check` | Compile in memory without writing any output, and exit non-zero if any job fails to compile. Needs no Azure credentials and submits nothing, so it is suitable as a CI gate. Combine with `--all` to validate the whole config. |
+| `-o OUTPUT` | Output YAML file path (default: `pipeline.yaml`). Ignored with `--check`. |
 | `--aml-env ENV` | Override the Azure ML environment for this invocation |
 | `--params JSON` | Runtime parameters as a JSON string (e.g. `'{"key": "value"}'`) |
 | `--env-var KEY=VALUE` | Inject an environment variable into pipeline steps. Repeatable. |

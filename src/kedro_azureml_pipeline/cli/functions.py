@@ -263,8 +263,10 @@ def compile_job_pipelines(
     load_versions: dict[str, str],
     job_names: list[str],
     output: str,
+    all_jobs: bool = False,
+    check: bool = False,
 ):
-    """Compile pipelines for named jobs into YAML files.
+    """Compile pipelines for named jobs into YAML files, or check they compile.
 
     Parameters
     ----------
@@ -279,14 +281,21 @@ def compile_job_pipelines(
     load_versions : dict of str to str
         Dataset version overrides.
     job_names : list of str
-        Names of jobs to compile (must exist in config).
+        Names of jobs to compile (must exist in config). Ignored when *all_jobs*.
     output : str
         Output file path. Suffixed with the job name for multiple jobs.
+    all_jobs : bool
+        Compile every resolved job (literal and factory-derived) instead of
+        *job_names*.
+    check : bool
+        Compile in memory without writing output, attempting every job and
+        raising at the end if any failed (does not abort on the first failure).
 
     Raises
     ------
     click.ClickException
-        If no ``jobs`` section is found or a requested job is missing.
+        If no ``jobs`` section is found, a requested job is missing, or (in
+        *check* mode) any job fails to compile.
     """
     with KedroContextManager(env=ctx.env, runtime_params=parse_runtime_params(params, True)) as mgr:
         config = mgr.plugin_config
@@ -297,7 +306,7 @@ def compile_job_pipelines(
         from kedro.framework.project import pipelines
 
         try:
-            selected_jobs = resolve_jobs(config, job_names, pipelines)
+            selected_jobs = enumerate_jobs(config, pipelines) if all_jobs else resolve_jobs(config, job_names, pipelines)
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
 
@@ -307,6 +316,7 @@ def compile_job_pipelines(
         # Read default experiment name from mlflow.yml
         default_experiment_name = _read_mlflow_experiment_name(mgr)
 
+        failures: list[str] = []
         for job_name, job_config in selected_jobs.items():
             pipeline_opts = job_config.pipeline
 
@@ -314,27 +324,41 @@ def compile_job_pipelines(
             job_experiment_name = job_config.experiment_name or default_experiment_name
             mlflow_run_name = job_config.display_name or job_name
 
-            generator = AzureMLPipelineGenerator(
-                pipeline_opts.pipeline_name,
-                ctx.env,
-                config,
-                mgr.context.params,
-                mgr.context.catalog,
-                aml_env,
-                _merge_job_params(params, job_config),
-                extra_env=extra_env,
-                load_versions=load_versions,
-                filter_options=pipeline_opts,
-                mlflow_run_name=mlflow_run_name,
-                experiment_name=job_experiment_name,
-                retry_config=job_config.retry,
-            )
-            az_pipeline = generator.generate()
+            try:
+                generator = AzureMLPipelineGenerator(
+                    pipeline_opts.pipeline_name,
+                    ctx.env,
+                    config,
+                    mgr.context.params,
+                    mgr.context.catalog,
+                    aml_env,
+                    _merge_job_params(params, job_config),
+                    extra_env=extra_env,
+                    load_versions=load_versions,
+                    filter_options=pipeline_opts,
+                    mlflow_run_name=mlflow_run_name,
+                    experiment_name=job_experiment_name,
+                    retry_config=job_config.retry,
+                )
+                az_pipeline = generator.generate()
+            except Exception as exc:  # noqa: BLE001
+                if not check:
+                    raise
+                failures.append(job_name)
+                click.echo(click.style(f"Job '{job_name}' failed to compile: {exc}", fg="red"))
+                continue
 
-            dest = output_path.with_stem(f"{output_path.stem}_{job_name}") if multi else output_path
+            if check:
+                click.echo(f"Compiled job '{job_name}' OK")
+            else:
+                dest = output_path.with_stem(f"{output_path.stem}_{job_name}") if multi else output_path
+                dest.write_text(str(az_pipeline))
+                click.echo(f"Compiled job '{job_name}' to {dest}")
 
-            dest.write_text(str(az_pipeline))
-            click.echo(f"Compiled job '{job_name}' to {dest}")
+        if check:
+            if failures:
+                raise click.ClickException(f"{len(failures)} job(s) failed to compile: {', '.join(failures)}")
+            click.echo(click.style(f"All {len(selected_jobs)} job(s) compiled successfully.", fg="green"))
 
 
 @contextmanager

@@ -88,6 +88,16 @@ cat check.yaml
 kedro azureml run -j training
 ```
 
+## Validate that every job compiles
+
+To confirm that all jobs in `azureml.yml` compile, including every factory-derived job, use `--all` together with `--check`:
+
+```bash
+kedro azureml compile --check --all
+```
+
+`--check` compiles each job in memory, writes no files, and exits non-zero if any job fails, reporting which ones. It needs no Azure ML credentials and submits nothing, so it is a fast safety net for catching configuration mistakes before they reach a real run. See [Deploy from CI/CD](deploy-from-cicd.md) for using this as a pull-request gate.
+
 ## See also
 
 - [CLI reference](../reference/cli.md#kedro-azureml-compile) for all `compile` flags

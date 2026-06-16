@@ -129,6 +129,53 @@ class TestCompile:
                 k in p for k in ("display_name", "type", "jobs")
             )
 
+    def test_compile_all_check_compiles_without_writing(
+        self,
+        patched_kedro_package,
+        cli_context,
+        dummy_pipeline,
+        dummy_plugin_config,
+        tmp_path: Path,
+    ):
+        """``compile --all --check`` compiles every job in memory and writes nothing."""
+        from kedro_azureml_pipeline.config import JobConfig, PipelineFilterOptions
+        from kedro_azureml_pipeline.manager import KedroContextManager
+
+        dummy_plugin_config.jobs = {
+            "test_job": JobConfig(pipeline=PipelineFilterOptions(pipeline_name="__default__")),
+        }
+
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+        mock_mgr.context.params = {}
+        mock_mgr.context.catalog = MagicMock()
+        mock_mgr.context.config_loader.__getitem__ = MagicMock(side_effect=KeyError("mlflow"))
+
+        with (
+            patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch.object(Path, "cwd", return_value=tmp_path),
+        ):
+            create_kedro_conf_dirs(tmp_path)
+            runner = CliRunner()
+            result = runner.invoke(cli.compile, ["--all", "--check"], obj=cli_context)
+
+            assert result.exit_code == 0, result.output
+            assert "compiled successfully" in result.output
+            assert not (tmp_path / "pipeline.yaml").exists()
+
+    def test_compile_requires_job_or_all(
+        self,
+        patched_kedro_package,
+        cli_context,
+    ):
+        """``compile`` with neither -j nor --all is a usage error."""
+        runner = CliRunner()
+        result = runner.invoke(cli.compile, [], obj=cli_context)
+        assert result.exit_code != 0
+        assert "Provide -j/--job name(s) or --all." in result.output
+
     def test_compile_no_jobs_errors(
         self,
         patched_kedro_package,

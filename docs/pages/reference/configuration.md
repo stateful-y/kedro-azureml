@@ -153,6 +153,8 @@ jobs:
     workspace: "prod"
     description: "Run the training pipeline on GPU cluster"
     schedule: "business_hours"
+    params:
+      lookback_days: 30
     retry:
       max_retries: 3
       timeout: 3600
@@ -166,8 +168,23 @@ jobs:
 | `display_name` | `null` | Display name shown in Azure ML Studio |
 | `compute` | `null` | Named compute entry; falls back to `__default__` |
 | `schedule` | `null` | Inline `ScheduleConfig`, named schedule string, a **list** of either (one trigger deployed per entry), or `null` for ad-hoc |
+| `params` | `null` | Job-scoped runtime parameters merged into the pipeline on `compile`, `run`, and `schedule` (see below) |
 | `retry` | `null` | Retry settings applied to every step (see below) |
 | `description` | `null` | Human-readable job description |
+
+### `params`
+
+Optional job-scoped runtime parameters, equivalent to passing `--params` for that job but stored in config so every `compile`, `run`, and `schedule` of the job picks them up. When a value is also given on the command line, the **CLI `--params` value wins** for that key; remaining job-level keys are kept. This lets a job carry stable defaults while still allowing one-off overrides at submission time.
+
+```yaml
+jobs:
+  training:
+    pipeline:
+      pipeline_name: "__default__"
+    params:
+      lookback_days: 30
+      model: "lgbm"
+```
 
 ### Job factories
 
