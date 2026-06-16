@@ -306,7 +306,9 @@ def compile_job_pipelines(
         from kedro.framework.project import pipelines
 
         try:
-            selected_jobs = enumerate_jobs(config, pipelines) if all_jobs else resolve_jobs(config, job_names, pipelines)
+            selected_jobs = (
+                enumerate_jobs(config, pipelines) if all_jobs else resolve_jobs(config, job_names, pipelines)
+            )
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
 

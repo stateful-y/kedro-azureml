@@ -176,6 +176,54 @@ class TestCompile:
         assert result.exit_code != 0
         assert "Provide -j/--job name(s) or --all." in result.output
 
+    def test_compile_all_and_job_mutually_exclusive(
+        self,
+        patched_kedro_package,
+        cli_context,
+    ):
+        """``compile --all`` combined with ``-j`` is a usage error."""
+        runner = CliRunner()
+        result = runner.invoke(cli.compile, ["--all", "-j", "test_job"], obj=cli_context)
+        assert result.exit_code != 0
+        assert "--all and -j/--job are mutually exclusive." in result.output
+
+    def test_compile_check_reports_failures(
+        self,
+        patched_kedro_package,
+        cli_context,
+        dummy_pipeline,
+        dummy_plugin_config,
+        tmp_path: Path,
+    ):
+        """``compile --check`` records a failing job and exits non-zero at the end."""
+        from kedro_azureml_pipeline.config import JobConfig, PipelineFilterOptions
+        from kedro_azureml_pipeline.manager import KedroContextManager
+
+        dummy_plugin_config.jobs = {
+            "test_job": JobConfig(pipeline=PipelineFilterOptions(pipeline_name="__default__")),
+        }
+
+        mock_mgr = MagicMock(spec=KedroContextManager)
+        mock_mgr.plugin_config = dummy_plugin_config
+        mock_mgr.context.params = {}
+        mock_mgr.context.catalog = MagicMock()
+        mock_mgr.context.config_loader.__getitem__ = MagicMock(side_effect=KeyError("mlflow"))
+
+        with (
+            patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
+            patch.object(AzureMLPipelineGenerator, "generate", side_effect=RuntimeError("boom")),
+            patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
+            patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch.object(Path, "cwd", return_value=tmp_path),
+        ):
+            create_kedro_conf_dirs(tmp_path)
+            runner = CliRunner()
+            result = runner.invoke(cli.compile, ["--check", "-j", "test_job"], obj=cli_context)
+
+            assert result.exit_code != 0
+            assert "failed to compile" in result.output
+            assert "1 job(s) failed to compile" in result.output
+
     def test_compile_no_jobs_errors(
         self,
         patched_kedro_package,
