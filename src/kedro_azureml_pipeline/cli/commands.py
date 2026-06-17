@@ -15,8 +15,10 @@ from kedro_azureml_pipeline.cli.functions import (
     compile_job_pipelines,
     delete_schedules,
     dynamic_import_job_schedule_func_from_str,
+    list_patterns,
     parse_extra_env_params,
     parse_runtime_params,
+    resolve_patterns,
     run_jobs,
     schedule_jobs,
     verify_configuration_directory_for_azure,
@@ -89,8 +91,20 @@ def init(ctx: CliContext):
     "job_names",
     type=str,
     multiple=True,
-    required=True,
     help="Name(s) of job(s) from the 'jobs' config section to compile.",
+)
+@click.option(
+    "--all",
+    "all_jobs",
+    is_flag=True,
+    default=False,
+    help="Compile every resolved job (literal and factory-derived). Mutually exclusive with -j.",
+)
+@click.option(
+    "--check",
+    is_flag=True,
+    default=False,
+    help="Compile in memory without writing output, and exit non-zero if any job fails to compile.",
 )
 @click.option(
     "--params",
@@ -124,12 +138,25 @@ def compile(
     ctx: CliContext,
     aml_env: str | None,
     job_names: tuple[str],
+    all_jobs: bool,
+    check: bool,
     params: str,
     output: str,
     env_var: tuple[str],
     load_versions: dict[str, str],
 ):
-    """Compile job pipeline(s) into YAML format."""
+    """Compile job pipeline(s) into YAML, or check that they all compile.
+
+    Provide one or more ``-j``/``--job`` names, or ``--all`` to compile every
+    resolved job. ``--check`` compiles in memory (no files written) and exits
+    non-zero if any job fails to compile, requiring no Azure credentials and
+    submitting nothing, suitable as a CI gate.
+    """
+    if all_jobs and job_names:
+        raise click.UsageError("--all and -j/--job are mutually exclusive.")
+    if not all_jobs and not job_names:
+        raise click.UsageError("Provide -j/--job name(s) or --all.")
+
     params = json.dumps(p) if (p := parse_runtime_params(params)) else ""
     extra_env = parse_extra_env_params(env_var)
 
@@ -141,6 +168,8 @@ def compile(
         load_versions=load_versions,
         job_names=list(job_names),
         output=output,
+        all_jobs=all_jobs,
+        check=check,
     )
 
 
@@ -443,3 +472,23 @@ def execute(
     with KedroContextManager(env=ctx.env, runtime_params=parameters) as mgr:
         runner = AzurePipelinesRunner(data_paths=data_paths)
         mgr.session.run(pipeline, node_names=[node], runner=runner)
+
+
+@azureml_group.command("resolve-patterns")
+@click.pass_obj
+def resolve_patterns_command(ctx: CliContext):
+    """List the concrete jobs derived from job factories and the pipelines.
+
+    The job analogue of ``kedro catalog resolve-patterns``.
+    """
+    resolve_patterns(ctx)
+
+
+@azureml_group.command("list-patterns")
+@click.pass_obj
+def list_patterns_command(ctx: CliContext):
+    """List the job-factory patterns (``jobs`` keys with ``{placeholder}`` markers).
+
+    The job analogue of ``kedro catalog list-patterns``.
+    """
+    list_patterns(ctx)

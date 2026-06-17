@@ -166,6 +166,8 @@ jobs:
 
 Each job inherits the `__default__` workspace and compute unless you override them explicitly.
 
+If your pipelines are namespaced per variant (e.g. `product.group.variant`) and you would otherwise write near-identical job blocks for each, define them once as a [job factory](../explanation/job-factories.md): a templated `jobs` entry whose concrete jobs are derived from the pipeline namespaces, so the job set tracks your pipelines without per-variant edits.
+
 ## Step 7: Verify locally
 
 Before submitting to Azure ML, let's confirm your project still runs locally with the new dataset wrappers:

@@ -439,8 +439,9 @@ class JobConfig(BaseModel):
     experiment_name: str | None = Field(default=None, description="Azure ML experiment name.")
     display_name: str | None = Field(default=None, description="Display name shown in the Azure ML portal.")
     compute: str | None = Field(default=None, description="Named compute entry to use.")
-    schedule: ScheduleConfig | str | None = Field(
-        default=None, description="Inline schedule, named schedule reference, or None for ad-hoc."
+    schedule: ScheduleConfig | str | list[ScheduleConfig | str] | None = Field(
+        default=None,
+        description="Inline schedule, named schedule reference, a list of either (one trigger deployed per entry), or None for ad-hoc.",
     )
     params: dict[str, Any] | None = Field(
         default=None,
@@ -507,7 +508,10 @@ class KedroAzureMLConfig(BaseModel):
     schedules: dict[str, ScheduleConfig] = Field(
         default_factory=dict, description="Reusable named schedule definitions."
     )
-    jobs: dict[str, JobConfig] = Field(default_factory=dict, description="Named job definitions.")
+    jobs: dict[str, JobConfig] = Field(
+        default_factory=dict,
+        description="Named job definitions. A key containing '{placeholder}' markers is a job factory whose jobs are derived from the Kedro pipeline namespaces.",
+    )
 
 
 CONFIG_TEMPLATE_YAML = """

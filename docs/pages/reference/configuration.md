@@ -5,11 +5,11 @@ All plugin settings live in `conf/<env>/azureml.yml`. The file is parsed into [`
 ## Top-level structure
 
 ```yaml
-workspace:    # required
-compute:      # required
-execution:    # optional
-schedules:    # optional
-jobs:         # optional
+workspace:             # required
+compute:               # required
+execution:             # optional
+schedules:             # optional
+jobs:                  # optional
 ```
 
 ---
@@ -153,6 +153,8 @@ jobs:
     workspace: "prod"
     description: "Run the training pipeline on GPU cluster"
     schedule: "business_hours"
+    params:
+      lookback_days: 30
     retry:
       max_retries: 3
       timeout: 3600
@@ -165,9 +167,60 @@ jobs:
 | `experiment_name` | `null` | Azure ML experiment name |
 | `display_name` | `null` | Display name shown in Azure ML Studio |
 | `compute` | `null` | Named compute entry; falls back to `__default__` |
-| `schedule` | `null` | Inline `ScheduleConfig`, named schedule string, or `null` for ad-hoc |
+| `schedule` | `null` | Inline `ScheduleConfig`, named schedule string, a **list** of either (one trigger deployed per entry), or `null` for ad-hoc |
+| `params` | `null` | Job-scoped runtime parameters merged into the pipeline on `compile`, `run`, and `schedule` (see below) |
 | `retry` | `null` | Retry settings applied to every step (see below) |
 | `description` | `null` | Human-readable job description |
+
+### `params`
+
+Optional job-scoped runtime parameters, equivalent to passing `--params` for that job but stored in config so every `compile`, `run`, and `schedule` of the job picks them up. When a value is also given on the command line, the **CLI `--params` value wins** for that key; remaining job-level keys are kept. This lets a job carry stable defaults while still allowing one-off overrides at submission time.
+
+```yaml
+jobs:
+  training:
+    pipeline:
+      pipeline_name: "__default__"
+    params:
+      lookback_days: 30
+      model: "lgbm"
+```
+
+### Job factories
+
+A `jobs` key that contains `{placeholder}` markers is a **job factory**: a templated job entry, mirroring a Kedro dataset factory. By default the jobs are derived from your **pipeline namespaces**, the same way a dataset factory's concrete datasets are determined by pipeline node references. You write a few factory patterns, and the concrete jobs come from the namespaces of each factory's pipeline. No target list is required:
+
+```yaml
+jobs:
+  # one job per namespace of the `inference` pipeline
+  "{region}-{model}-inference":
+    schedule: nightly
+    pipeline:
+      pipeline_name: "inference"
+      node_namespaces: ["{region}.{model}"]
+  # a more-specific pattern overrides the schedule for one region
+  "america-{model}-inference":
+    schedule: "hourly"
+    pipeline:
+      pipeline_name: "inference"
+      node_namespaces: ["{region}.{model}"]
+  # literal (non-factory) jobs are kept verbatim and take precedence
+  snapshot:
+    pipeline: {pipeline_name: "snapshot"}
+```
+
+**Bindings come from the pipeline.** For each factory, the `node_namespaces` template defines the placeholder names and their namespace depth. The plugin enumerates the distinct namespaces of `pipeline_name` at that depth and binds the placeholders positionally (so the namespace `europe.lgbm` binds `region=europe, model=lgbm`). One job is produced per binding. Adding a variant to your pipelines makes its job appear with no `azureml.yml` edit. A factory name placeholder that is absent from its `node_namespaces` template is a configuration error. When `node_namespaces` holds more than one entry, only the first is the binding axis; the rest are not used for derivation but still render per job as ordinary runtime namespace filters.
+
+**Resolution is forward-only.** Job names are produced only by rendering placeholders into a pattern; names are never parsed back. When more than one pattern renders the same name, the **most-specific** one (most literal, non-placeholder characters) supplies the config, so per-region variation such as a different schedule is expressed by a more-specific pattern rather than an override table. Literal (non-factory) jobs take precedence over any pattern.
+
+`{placeholder}` (factory) and `${...}` (OmegaConf) use different syntax and coexist. The namespace alone identifies the job, so no `tags` filter is needed. Job names use the namespace form of each placeholder verbatim (so `europe.lgbm` yields `europe-lgbm-inference`).
+
+* **`kedro azureml run -j <name>`** renders all bindings (overlaying literal jobs) and looks the requested name up; an unknown name is an error listing the available jobs.
+* **`kedro azureml resolve-patterns`** lists every derived job (see the [CLI reference](cli.md)), which is how you discover the names to pass to `-j`.
+
+There is no separate target list or provider key: the jobs are always derived from the pipeline namespaces, so adding a variant to your pipelines yields its job with no config edit.
+
+For the dataset-factory analogy and why resolution is forward-only, see [Job Factories](../explanation/job-factories.md); for a step-by-step recipe, see [Define jobs with factories](../how-to/define-job-factories.md).
 
 ### `retry`
 

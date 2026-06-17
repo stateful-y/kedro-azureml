@@ -142,6 +142,7 @@ nav:
     - Migrate an Existing Project: pages/tutorials/migrate-existing-project.md
   - How-to Guides:
     - pages/how-to/index.md
+    - Define Job Factories: pages/how-to/define-job-factories.md
     - Schedule Pipelines: pages/how-to/schedule-pipelines.md
     - Use Data Assets: pages/how-to/use-data-assets.md
     - Run Distributed Training: pages/how-to/run-distributed-training.md
@@ -162,6 +163,7 @@ nav:
   - Explanation:
     - pages/explanation/index.md
     - Concepts: pages/explanation/concepts.md
+    - Job Factories: pages/explanation/job-factories.md
     - Architecture: pages/explanation/architecture.md
     - Data Flow Between Steps: pages/explanation/data-flow.md
     - Hook Lifecycle: pages/explanation/hook-lifecycle.md

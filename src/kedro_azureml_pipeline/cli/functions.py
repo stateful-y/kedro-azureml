@@ -7,12 +7,17 @@ import re
 from collections.abc import Callable
 from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
+from kedro_azureml_pipeline.factory import enumerate_jobs, is_factory, resolve_jobs
 from kedro_azureml_pipeline.generator import AzureMLPipelineGenerator
 from kedro_azureml_pipeline.manager import KedroContextManager
 from kedro_azureml_pipeline.utils import CliContext
+
+if TYPE_CHECKING:
+    from kedro_azureml_pipeline.config.models import ScheduleConfig
 
 logger = logging.getLogger()
 
@@ -258,8 +263,10 @@ def compile_job_pipelines(
     load_versions: dict[str, str],
     job_names: list[str],
     output: str,
+    all_jobs: bool = False,
+    check: bool = False,
 ):
-    """Compile pipelines for named jobs into YAML files.
+    """Compile pipelines for named jobs into YAML files, or check they compile.
 
     Parameters
     ----------
@@ -274,14 +281,21 @@ def compile_job_pipelines(
     load_versions : dict of str to str
         Dataset version overrides.
     job_names : list of str
-        Names of jobs to compile (must exist in config).
+        Names of jobs to compile (must exist in config). Ignored when *all_jobs*.
     output : str
         Output file path. Suffixed with the job name for multiple jobs.
+    all_jobs : bool
+        Compile every resolved job (literal and factory-derived) instead of
+        *job_names*.
+    check : bool
+        Compile in memory without writing output, attempting every job and
+        raising at the end if any failed (does not abort on the first failure).
 
     Raises
     ------
     click.ClickException
-        If no ``jobs`` section is found or a requested job is missing.
+        If no ``jobs`` section is found, a requested job is missing, or (in
+        *check* mode) any job fails to compile.
     """
     with KedroContextManager(env=ctx.env, runtime_params=parse_runtime_params(params, True)) as mgr:
         config = mgr.plugin_config
@@ -289,14 +303,14 @@ def compile_job_pipelines(
         if not config.jobs:
             raise click.ClickException("No 'jobs' section found in azureml.yml config.")
 
-        missing = set(job_names) - set(config.jobs.keys())
-        if missing:
-            raise click.ClickException(
-                f"Job(s) not found in config: {', '.join(sorted(missing))}. "
-                f"Available jobs: {', '.join(sorted(config.jobs.keys()))}"
-            )
+        from kedro.framework.project import pipelines
 
-        selected_jobs = {k: v for k, v in config.jobs.items() if k in job_names}
+        try:
+            selected_jobs = (
+                enumerate_jobs(config, pipelines) if all_jobs else resolve_jobs(config, job_names, pipelines)
+            )
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
 
         output_path = Path(output)
         multi = len(selected_jobs) > 1
@@ -304,6 +318,7 @@ def compile_job_pipelines(
         # Read default experiment name from mlflow.yml
         default_experiment_name = _read_mlflow_experiment_name(mgr)
 
+        failures: list[str] = []
         for job_name, job_config in selected_jobs.items():
             pipeline_opts = job_config.pipeline
 
@@ -311,27 +326,41 @@ def compile_job_pipelines(
             job_experiment_name = job_config.experiment_name or default_experiment_name
             mlflow_run_name = job_config.display_name or job_name
 
-            generator = AzureMLPipelineGenerator(
-                pipeline_opts.pipeline_name,
-                ctx.env,
-                config,
-                mgr.context.params,
-                mgr.context.catalog,
-                aml_env,
-                _merge_job_params(params, job_config),
-                extra_env=extra_env,
-                load_versions=load_versions,
-                filter_options=pipeline_opts,
-                mlflow_run_name=mlflow_run_name,
-                experiment_name=job_experiment_name,
-                retry_config=job_config.retry,
-            )
-            az_pipeline = generator.generate()
+            try:
+                generator = AzureMLPipelineGenerator(
+                    pipeline_opts.pipeline_name,
+                    ctx.env,
+                    config,
+                    mgr.context.params,
+                    mgr.context.catalog,
+                    aml_env,
+                    _merge_job_params(params, job_config),
+                    extra_env=extra_env,
+                    load_versions=load_versions,
+                    filter_options=pipeline_opts,
+                    mlflow_run_name=mlflow_run_name,
+                    experiment_name=job_experiment_name,
+                    retry_config=job_config.retry,
+                )
+                az_pipeline = generator.generate()
+            except Exception as exc:  # noqa: BLE001
+                if not check:
+                    raise
+                failures.append(job_name)
+                click.echo(click.style(f"Job '{job_name}' failed to compile: {exc}", fg="red"))
+                continue
 
-            dest = output_path.with_stem(f"{output_path.stem}_{job_name}") if multi else output_path
+            if check:
+                click.echo(f"Compiled job '{job_name}' OK")
+            else:
+                dest = output_path.with_stem(f"{output_path.stem}_{job_name}") if multi else output_path
+                dest.write_text(str(az_pipeline))
+                click.echo(f"Compiled job '{job_name}' to {dest}")
 
-            dest.write_text(str(az_pipeline))
-            click.echo(f"Compiled job '{job_name}' to {dest}")
+        if check:
+            if failures:
+                raise click.ClickException(f"{len(failures)} job(s) failed to compile: {', '.join(failures)}")
+            click.echo(click.style(f"All {len(selected_jobs)} job(s) compiled successfully.", fg="green"))
 
 
 @contextmanager
@@ -375,15 +404,14 @@ def _prepare_jobs(
                 "No 'jobs' section found in azureml.yml config. Define jobs to use this command."
             )
 
-        selected_jobs = config.jobs
-        if job_names:
-            missing = set(job_names) - set(config.jobs.keys())
-            if missing:
-                raise click.ClickException(
-                    f"Job(s) not found in config: {', '.join(sorted(missing))}. "
-                    f"Available jobs: {', '.join(sorted(config.jobs.keys()))}"
-                )
-            selected_jobs = {k: v for k, v in config.jobs.items() if k in job_names}
+        from kedro.framework.project import pipelines
+
+        try:
+            selected_jobs = (
+                resolve_jobs(config, job_names, pipelines) if job_names else enumerate_jobs(config, pipelines)
+            )
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
 
         # Read default experiment name from mlflow.yml
         default_experiment_name = _read_mlflow_experiment_name(mgr)
@@ -469,8 +497,9 @@ def run_jobs(
         prepared,
     ):
         results: dict[str, bool] = {}
+        job_order = list(selected_jobs)
 
-        for job_name in selected_jobs:
+        for index, job_name in enumerate(job_order):
             try:
                 job_experiment_name, pipeline_job, job_config = prepared[job_name]
                 workspace = config.workspace.resolve(workspace_override or job_config.workspace)
@@ -506,11 +535,56 @@ def run_jobs(
                 logger.exception(f"Error running job '{job_name}'")
                 results[job_name] = False
 
+            # Fail-fast: jobs in a batch are submitted in order and a later job
+            # typically consumes an earlier one's output (e.g. snapshot -> training
+            # -> inference). Once a job fails there is no point submitting the rest,
+            # so stop and report the ones we skipped.
+            if not results[job_name]:
+                skipped = job_order[index + 1 :]
+                if skipped:
+                    click.echo(
+                        click.style(
+                            f"Aborting batch: '{job_name}' failed; "
+                            f"skipping {len(skipped)} remaining job(s): {', '.join(skipped)}",
+                            fg="red",
+                        )
+                    )
+                break
+
         succeeded = sum(1 for v in results.values() if v)
         failed = sum(1 for v in results.values() if not v)
-        click.echo(f"\nRun summary: {succeeded} succeeded, {failed} failed (out of {len(results)} jobs)")
+        skipped_count = len(job_order) - len(results)
+        summary = f"\nRun summary: {succeeded} succeeded, {failed} failed"
+        if skipped_count:
+            summary += f", {skipped_count} skipped"
+        summary += f" (out of {len(job_order)} selected)"
+        click.echo(summary)
 
-        return all(results.values())
+        return all(results.values()) and not skipped_count
+
+
+def _schedule_entries(
+    job_name: str, schedule: "ScheduleConfig | str | list[ScheduleConfig | str] | None"
+) -> "list[tuple[str, ScheduleConfig | str]]":
+    """Map a job's ``schedule`` (one, a list, or None) to ``(schedule_name, ref)`` pairs.
+
+    A single schedule keeps the job name; a list gets a stable per-entry suffix
+    (the named ref for strings, else the index); ``None`` yields no entries.
+    Shared by schedule creation and deletion so the two never drift.
+    """
+    if schedule is None:
+        return []
+    refs = schedule if isinstance(schedule, list) else [schedule]
+    entries: list[tuple[str, ScheduleConfig | str]] = []
+    for index, ref in enumerate(refs):
+        if len(refs) == 1:
+            name = job_name
+        elif isinstance(ref, str):
+            name = f"{job_name}-{ref}"
+        else:
+            name = f"{job_name}-{index}"
+        entries.append((name, ref))
+    return entries
 
 
 def delete_schedules(
@@ -521,8 +595,9 @@ def delete_schedules(
 ) -> bool:
     """Delete Azure ML schedules for the specified jobs.
 
-    Schedule names match job names (the convention used by
-    ``build_job_schedule``).  No pipeline compilation is performed.
+    Job names are resolved through the job factories; each job's schedule
+    name(s) mirror the creation convention (see ``_schedule_entries``). No
+    pipeline compilation is performed.
 
     Parameters
     ----------
@@ -540,6 +615,8 @@ def delete_schedules(
     bool
         ``True`` if all deletions succeeded (or were no-ops).
     """
+    from kedro.framework.project import pipelines
+
     from kedro_azureml_pipeline.scheduler import AzureMLScheduleClient
 
     with KedroContextManager(env=ctx.env) as mgr:
@@ -550,28 +627,28 @@ def delete_schedules(
                 "No 'jobs' section found in azureml.yml config. Define jobs to use this command."
             )
 
-        missing = set(job_names) - set(config.jobs.keys())
-        if missing:
-            raise click.ClickException(
-                f"Job(s) not found in config: {', '.join(sorted(missing))}. "
-                f"Available jobs: {', '.join(sorted(config.jobs.keys()))}"
-            )
+        try:
+            selected_jobs = resolve_jobs(config, job_names, pipelines)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
 
         schedule_client = AzureMLScheduleClient()
         results: dict[str, bool] = {}
 
-        for job_name in job_names:
+        for job_name, job_config in selected_jobs.items():
             try:
-                job_config = config.jobs[job_name]
                 workspace = config.workspace.resolve(workspace_override or job_config.workspace)
-
-                if dry_run:
-                    click.echo(f"[DRY RUN] Would delete schedule '{job_name}'")
-                    results[job_name] = True
-                else:
-                    schedule_client.delete_schedule(job_name, workspace)
-                    click.echo(click.style(f"Schedule '{job_name}' deleted", fg="green"))
-                    results[job_name] = True
+                # Mirror the creation naming: delete every schedule the job owns.
+                # A job with no schedule config falls back to the bare job name
+                # (the legacy 1:1 schedule name), so stale schedules can be pruned.
+                schedule_names = [name for name, _ in _schedule_entries(job_name, job_config.schedule)] or [job_name]
+                for schedule_name in schedule_names:
+                    if dry_run:
+                        click.echo(f"[DRY RUN] Would delete schedule '{schedule_name}'")
+                    else:
+                        schedule_client.delete_schedule(schedule_name, workspace)
+                        click.echo(click.style(f"Schedule '{schedule_name}' deleted", fg="green"))
+                results[job_name] = True
 
             except Exception as e:
                 click.echo(click.style(f"Failed to delete schedule '{job_name}': {e}", fg="red"))
@@ -636,8 +713,8 @@ def schedule_jobs(
         selected_jobs,
         prepared,
     ):
-        # Validate that all selected jobs have a schedule configured
-        missing_schedule = [name for name, cfg in selected_jobs.items() if cfg.schedule is None]
+        # Validate that all selected jobs have a schedule configured (None or [])
+        missing_schedule = [name for name, cfg in selected_jobs.items() if not cfg.schedule]
         if missing_schedule:
             raise click.ClickException(
                 f"Job(s) have no schedule configured: {', '.join(sorted(missing_schedule))}. "
@@ -659,42 +736,34 @@ def schedule_jobs(
                 if job_experiment_name:
                     pipeline_job.experiment_name = job_experiment_name
 
-                schedule_cfg = resolve_schedule(job_config.schedule, config.schedules)
-                trigger = build_trigger(schedule_cfg)
-
-                job_schedule = build_job_schedule(
-                    name=job_name,
-                    trigger=trigger,
-                    pipeline_job=pipeline_job,
-                    display_name=job_config.display_name,
-                    description=job_config.description,
-                )
-
-                if dry_run:
-                    if schedule_cfg.cron:
-                        trigger_desc = f"cron: {schedule_cfg.cron.expression}"
-                    else:
-                        rec = schedule_cfg.recurrence
-                        assert rec is not None
-                        trigger_desc = f"recurrence: every {rec.interval} {rec.frequency}(s)"
-                    click.echo(
-                        f"[DRY RUN] Would create schedule '{job_name}' "
-                        f"({trigger_desc}) "
-                        f"for pipeline '{pipeline_opts.pipeline_name}'"
+                # A job may declare one schedule or a list; deploy one Azure ML
+                # schedule (trigger) per entry, named via the shared convention.
+                for schedule_name, schedule_ref in _schedule_entries(job_name, job_config.schedule):
+                    schedule_cfg = resolve_schedule(schedule_ref, config.schedules)
+                    trigger = build_trigger(schedule_cfg)
+                    job_schedule = build_job_schedule(
+                        name=schedule_name,
+                        trigger=trigger,
+                        pipeline_job=pipeline_job,
+                        display_name=job_config.display_name,
+                        description=job_config.description,
                     )
-                    results[job_name] = True
-                else:
-                    result = schedule_client.create_or_update_schedule(
-                        job_schedule,
-                        workspace,
-                    )
-                    click.echo(
-                        click.style(
-                            f"Schedule '{result.name}' created/updated successfully",
-                            fg="green",
+
+                    if dry_run:
+                        if schedule_cfg.cron:
+                            trigger_desc = f"cron: {schedule_cfg.cron.expression}"
+                        else:
+                            rec = schedule_cfg.recurrence
+                            assert rec is not None
+                            trigger_desc = f"recurrence: every {rec.interval} {rec.frequency}(s)"
+                        click.echo(
+                            f"[DRY RUN] Would create schedule '{schedule_name}' "
+                            f"({trigger_desc}) for pipeline '{pipeline_opts.pipeline_name}'"
                         )
-                    )
-                    results[job_name] = True
+                    else:
+                        result = schedule_client.create_or_update_schedule(job_schedule, workspace)
+                        click.echo(click.style(f"Schedule '{result.name}' created/updated successfully", fg="green"))
+                results[job_name] = True
 
             except Exception as e:
                 click.echo(click.style(f"Failed to schedule job '{job_name}': {e}", fg="red"))
@@ -706,3 +775,75 @@ def schedule_jobs(
         click.echo(f"\nSchedule summary: {succeeded} succeeded, {failed} failed (out of {len(results)} jobs)")
 
         return all(results.values())
+
+
+def _format_schedule(schedule: "ScheduleConfig | str | list[ScheduleConfig | str]") -> str:
+    """Render a job's ``schedule`` (one, a list, or a named ref) as a compact summary.
+
+    Named references print as-is; inline schedules print as ``cron:<expr>`` or
+    ``recurrence:every <n> <freq>(s)``. Used only for the ``resolve-patterns``
+    listing, so the output is human-readable rather than round-trippable.
+    """
+    refs = schedule if isinstance(schedule, list) else [schedule]
+    parts: list[str] = []
+    for ref in refs:
+        if isinstance(ref, str):
+            parts.append(ref)
+        elif ref.cron:
+            parts.append(f"cron:{ref.cron.expression}")
+        else:
+            rec = ref.recurrence
+            assert rec is not None  # ScheduleConfig requires exactly one of cron/recurrence
+            parts.append(f"recurrence:every {rec.interval} {rec.frequency}(s)")
+    return ", ".join(parts)
+
+
+def resolve_patterns(ctx: CliContext) -> None:
+    """Print the concrete jobs derived from the job factories and pipelines.
+
+    The analogue of ``kedro catalog resolve-patterns``: renders every job factory
+    against the active pipeline namespaces (plus any literal jobs) and lists the
+    resulting job names with their schedule and node namespaces. No Azure ML
+    connection is made.
+
+    Parameters
+    ----------
+    ctx : CliContext
+        CLI context containing the Kedro environment and metadata.
+    """
+    from kedro.framework.project import pipelines
+
+    with KedroContextManager(env=ctx.env) as mgr:
+        jobs = enumerate_jobs(mgr.plugin_config, pipelines)
+        if not jobs:
+            click.echo("No jobs resolved (no job factories or literal jobs in azureml.yml).")
+            return
+        for name in sorted(jobs):
+            job = jobs[name]
+            namespaces = ", ".join(job.pipeline.node_namespaces or [])
+            detail = [f"pipeline={job.pipeline.pipeline_name}"]
+            if namespaces:
+                detail.append(f"namespaces=[{namespaces}]")
+            if job.schedule:
+                detail.append(f"schedule={_format_schedule(job.schedule)}")
+            click.echo(f"{name}  ({'; '.join(detail)})")
+
+
+def list_patterns(ctx: CliContext) -> None:
+    """List the job-factory keys (``jobs`` keys containing ``{placeholder}`` markers).
+
+    The analogue of ``kedro catalog list-patterns``. Literal (non-factory) job
+    keys are not listed.
+
+    Parameters
+    ----------
+    ctx : CliContext
+        CLI context containing the Kedro environment and metadata.
+    """
+    with KedroContextManager(env=ctx.env) as mgr:
+        patterns = sorted(key for key in mgr.plugin_config.jobs if is_factory(key))
+        if not patterns:
+            click.echo("No job factory patterns defined in azureml.yml.")
+            return
+        for pattern in patterns:
+            click.echo(pattern)

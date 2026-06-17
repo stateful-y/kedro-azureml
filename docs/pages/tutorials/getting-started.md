@@ -149,6 +149,10 @@ jobs:
     display_name: "Training pipeline"
 ```
 
+This is a single literal job. If you later have a *family* of similar jobs, such
+as one per region or model in a namespaced pipeline, you can define them all with
+one templated entry instead. See [Job Factories](../explanation/job-factories.md).
+
 ## Step 6: Run on Azure ML
 
 Now let's submit the job:
