@@ -9,11 +9,18 @@ updates:
       - "dependencies"
       - "ci"
 
-  # Maintain dependencies for pip
-  - package-ecosystem: "pip"
+  # Maintain Python dependencies (pyproject.toml + uv.lock).
+  # The "uv" ecosystem (not "pip") is required so Dependabot reads uv.lock and the
+  # PEP 735 [dependency-groups] (dev/lint/tests/docs) where tools like ty/ruff live.
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "weekly"
     labels:
       - "dependencies"
       - "python"
+    groups:
+      # Batch all Python updates into one weekly PR to keep noise low; CI still gates it.
+      python-dependencies:
+        patterns:
+          - "*"

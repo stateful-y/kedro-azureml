@@ -160,7 +160,9 @@ class AzureMLPipelineGenerator:
             azure_pipeline_outputs = self._gather_pipeline_outputs(pipeline, invoked_components)
             return azure_pipeline_outputs
 
-        kedro_azure_pipeline = azure_pipeline(name=self.pipeline_name)(kedro_azure_pipeline_fn)
+        # azure-ai-ml's @pipeline decorator has incomplete overload stubs; the call is valid at runtime.
+        pipeline_decorator = azure_pipeline(name=self.pipeline_name)  # ty: ignore[no-matching-overload]
+        kedro_azure_pipeline = pipeline_decorator(kedro_azure_pipeline_fn)
 
         azure_pipeline_job: Job = kedro_azure_pipeline()
         return azure_pipeline_job

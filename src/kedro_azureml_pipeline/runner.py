@@ -91,7 +91,9 @@ class AzurePipelinesRunner(SequentialRunner):
             if ds_name in updated_catalog.filter():  # pragma: no branch
                 ds = updated_catalog[ds_name]
                 if isinstance(ds, AzureMLAssetDataset):  # pragma: no branch
-                    ds.azure_config = azure_config
+                    # azure-ai-ml types azure_config as a data descriptor whose __set__ stub
+                    # ty cannot satisfy; the assignment is valid at runtime.
+                    ds.azure_config = azure_config  # ty: ignore[invalid-assignment]
 
         catalog_set = set(updated_catalog.filter())
 
