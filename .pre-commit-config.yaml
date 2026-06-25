@@ -6,6 +6,8 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
+        # uv.lock is an intentionally-tracked generated lockfile that exceeds the 500 KB default.
+        exclude: ^uv\.lock$
       - id: check-json
       - id: check-toml
       - id: check-merge-conflict
@@ -50,7 +52,10 @@ repos:
     hooks:
       - id: ty
         name: ty
-        entry: uv run ty check src
+        # --extra mlflow: type-check the optional mlflow code paths (hooks/mlflow.py,
+        #   hooks/local_run.py) instead of emitting unresolved-import warnings.
+        # --locked: use the exact pinned versions from uv.lock so local matches CI.
+        entry: uv run --extra mlflow --locked ty check src
         language: system
         types: [python]
         files: ^src/

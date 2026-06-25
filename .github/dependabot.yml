@@ -1,4 +1,6 @@
 version: 2
+# Python dependencies (pyproject.toml + uv.lock) are managed by Renovate (see renovate.json),
+# which has first-class uv.lock support. Dependabot only handles GitHub Actions here.
 updates:
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -8,12 +10,3 @@ updates:
     labels:
       - "dependencies"
       - "ci"
-
-  # Maintain dependencies for pip
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "dependencies"
-      - "python"
