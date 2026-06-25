@@ -243,6 +243,13 @@ exclude = ["CHANGELOG.md", "site", "htmlcov", ".nox", ".venv"]
 
 [tool.ty]
 # Third-party SDK type stubs (Azure ML, Kedro) have incomplete or incorrect annotations.
+
+[tool.ty.terminal]
+# The rules below are intentionally downgraded to "warn" because of those stub gaps.
+# Keep the diagnostics visible but non-fatal: newer ty versions exit 1 on warning-level
+# diagnostics by default, which would otherwise break CI on third-party stub noise.
+error-on-warning = false
+
 [tool.ty.rules]
 call-non-callable = "warn"
 invalid-assignment = "warn"
