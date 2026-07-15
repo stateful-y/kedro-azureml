@@ -283,8 +283,6 @@ def fix(session: nox.Session) -> None:
         "--no-default-groups",
         "--group",
         "dev",
-        # Pin to uv.lock so CI cannot silently drift to newer dev-tool releases than local.
-        "--locked",
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
     # Run pre-commit
