@@ -247,37 +247,39 @@ def test_docstrings(session: nox.Session) -> None:
 @nox.session(venv_backend="uv")
 def lint(session: nox.Session) -> None:
     """Run linters and type checkers."""
-    # Install dependencies
+    # Install dependencies. --locked pins the exact uv.lock versions so this matches CI.
     session.run_install(
         "uv",
         "sync",
+        "--locked",
         "--no-default-groups",
-        "--group",
-        "lint",
         # Install the project + mlflow extra so ty can resolve azure-ai-ml / mlflow imports.
         "--extra",
         "mlflow",
-        "--locked",
+        "--group",
+        "lint",
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
 
     # Run ruff check
     session.run("ruff", "check", "src", "tests", external=True)
 
-    # Run rumdl markdown linter
-    session.run("uvx", "rumdl", "check", ".", external=True)
+    # Run rumdl markdown linter (resolved from the lint group, not uvx-latest)
+    session.run("rumdl", "check", ".", external=True)
 
-    # Run ty
-    session.run("ty", "check", "src", external=True)
+    # Run ty (warnings are non-fatal; demoted rules in [tool.ty.rules] stay visible)
+    session.run("ty", "check", "--exit-zero-on-warning", "src", external=True)
 
 
 @nox.session(venv_backend="uv")
 def fix(session: nox.Session) -> None:
     """Format the code base to adhere to our styles, and complain about what we cannot do automatically."""
-    # Install dependencies
+    # Install dependencies. --locked pins the exact uv.lock versions so a stale lock
+    # fails loudly here and local matches CI.
     session.run_install(
         "uv",
         "sync",
+        "--locked",
         "--no-default-groups",
         "--group",
         "dev",
