@@ -139,6 +139,15 @@ plugins:
             - https://docs.python.org/3/objects.inv
           options:
             docstring_style: numpy
+            docstring_options:
+              # The config models are pydantic: they declare fields, and pydantic
+              # synthesises `__init__` from them at runtime. griffe reads the
+              # source statically, sees no `__init__`, and so reports every
+              # documented field as "does not appear in the function signature".
+              # The docstrings are right -- those fields really are constructor
+              # kwargs -- so this turns off the one check that cannot see them,
+              # not the other docstring checks.
+              warn_unknown_params: false
             show_source: true
             show_root_heading: true
             show_symbol_type_heading: true

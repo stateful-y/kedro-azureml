@@ -138,7 +138,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["ARG", "S101", "T201", "PLR2004"]  # Allow assert statements, prints, and magic values in tests
-"docs/**/*" = ["T201", "ARG001", "PLW0603", "SIM105", "SIM108"]  # Allow prints, unused args, globals, and simplifiable patterns in documentation hooks
+# The hooks implement signatures they do not choose -- mkdocs' event hooks and
+# HTMLParser's handle_* methods -- so an unused parameter is the interface, not
+# an oversight. ARG002 is the method-level twin of ARG001.
+"docs/**/*" = ["T201", "ARG001", "ARG002", "PLW0603", "SIM105", "SIM108"]  # Allow prints, unused args, globals, and simplifiable patterns in documentation hooks
 "src/kedro_azureml_pipeline/cli/commands.py" = ["ARG001"]  # Click callbacks receive unused context
 "src/kedro_azureml_pipeline/cli/functions.py" = ["ARG001"]  # Click callbacks receive unused context/param
 "src/kedro_azureml_pipeline/hooks/local_run.py" = ["ARG002"]  # Kedro hook signatures require specific args
