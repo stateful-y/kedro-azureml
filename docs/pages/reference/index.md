@@ -6,3 +6,4 @@ Complete technical reference for all plugin configuration, commands, and APIs. U
 - [**CLI**](cli.md): All `kedro azureml` commands and their flags.
 - [**Datasets**](datasets.md): Parameter reference for [`AzureMLAssetDataset`][kedro_azureml_pipeline.datasets.AzureMLAssetDataset] and [`AzureMLPipelineDataset`][kedro_azureml_pipeline.datasets.AzureMLPipelineDataset].
 - [**API**](api.md): Auto-generated reference for all public classes and functions.
+- [**Changelog**](changelog.md): Release history for every published version, newest first.

@@ -4,6 +4,7 @@ How-to guides are task-oriented recipes for users who already have the plugin in
 
 ## Core workflows
 
+- [**Define Job Factories**](define-job-factories.md): Define a family of jobs with a single templated entry that tracks your namespaced pipelines, instead of one `jobs` block per variant.
 - [**Schedule Pipelines**](schedule-pipelines.md): Configure cron and recurrence schedules for recurring Azure ML jobs.
 - [**Use Data Assets**](use-data-assets.md): Integrate Azure ML Data Assets into your Kedro catalog with [`AzureMLAssetDataset`][kedro_azureml_pipeline.datasets.AzureMLAssetDataset] and [`AzureMLPipelineDataset`][kedro_azureml_pipeline.datasets.AzureMLPipelineDataset].
 - [**Compile and Inspect**](compile-and-inspect.md): Generate Azure ML Pipeline YAML definitions and inspect them before submitting.
