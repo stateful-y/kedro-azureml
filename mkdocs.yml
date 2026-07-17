@@ -71,7 +71,16 @@ markdown_extensions:
   - pymdownx.magiclink
   - pymdownx.mark
   - pymdownx.smartsymbols
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      # Ordered: docs-relative includes win, but a page can still reach the
+      # repo root (e.g. CHANGELOG.md).  Do not narrow this to [docs] -- a
+      # project may legitimately include a file from src/ or the repo root.
+      base_path:
+        - docs
+        - .
+      # Without this a missing include is dropped silently, rendering a page
+      # that looks deliberate and is empty.
+      check_paths: true
   - pymdownx.superfences:
       custom_fences:
         - class: mermaid
@@ -123,8 +132,22 @@ plugins:
       handlers:
         python:
           paths: [src]
+          inventories:
+            # Resolves standard-library types in signatures and See Also
+            # entries.  Add your dependencies' inventories here too, e.g.
+            #   - https://numpy.org/doc/stable/objects.inv
+            - https://docs.python.org/3/objects.inv
           options:
             docstring_style: numpy
+            docstring_options:
+              # The config models are pydantic: they declare fields, and pydantic
+              # synthesises `__init__` from them at runtime. griffe reads the
+              # source statically, sees no `__init__`, and so reports every
+              # documented field as "does not appear in the function signature".
+              # The docstrings are right -- those fields really are constructor
+              # kwargs -- so this turns off the one check that cannot see them,
+              # not the other docstring checks.
+              warn_unknown_params: false
             show_source: true
             show_root_heading: true
             show_symbol_type_heading: true
@@ -154,12 +177,6 @@ nav:
     - Authenticate: pages/how-to/authenticate.md
     - Troubleshoot: pages/how-to/troubleshoot.md
     - Contribute: pages/how-to/contribute.md
-  - Reference:
-    - pages/reference/index.md
-    - Configuration: pages/reference/configuration.md
-    - CLI: pages/reference/cli.md
-    - Datasets: pages/reference/datasets.md
-    - API: pages/reference/api.md
   - Explanation:
     - pages/explanation/index.md
     - Concepts: pages/explanation/concepts.md
@@ -167,6 +184,13 @@ nav:
     - Architecture: pages/explanation/architecture.md
     - Data Flow Between Steps: pages/explanation/data-flow.md
     - Hook Lifecycle: pages/explanation/hook-lifecycle.md
+  - Reference:
+    - pages/reference/index.md
+    - Configuration: pages/reference/configuration.md
+    - CLI: pages/reference/cli.md
+    - Datasets: pages/reference/datasets.md
+    - API: pages/reference/api.md
+    - Changelog: pages/reference/changelog.md
 
 extra:
   social:
@@ -176,3 +200,6 @@ extra:
 watch:
   - mkdocs.yml
   - docs
+  # The API pages are generated from the package source, so a source edit must
+  # trigger a rebuild -- otherwise adding a class shows nothing until restart.
+  - src
