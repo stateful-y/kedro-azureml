@@ -177,13 +177,6 @@ nav:
     - Authenticate: pages/how-to/authenticate.md
     - Troubleshoot: pages/how-to/troubleshoot.md
     - Contribute: pages/how-to/contribute.md
-  - Reference:
-    - pages/reference/index.md
-    - Configuration: pages/reference/configuration.md
-    - CLI: pages/reference/cli.md
-    - Datasets: pages/reference/datasets.md
-    - API: pages/reference/api.md
-    - Changelog: pages/reference/changelog.md
   - Explanation:
     - pages/explanation/index.md
     - Concepts: pages/explanation/concepts.md
@@ -191,6 +184,13 @@ nav:
     - Architecture: pages/explanation/architecture.md
     - Data Flow Between Steps: pages/explanation/data-flow.md
     - Hook Lifecycle: pages/explanation/hook-lifecycle.md
+  - Reference:
+    - pages/reference/index.md
+    - Configuration: pages/reference/configuration.md
+    - CLI: pages/reference/cli.md
+    - Datasets: pages/reference/datasets.md
+    - API: pages/reference/api.md
+    - Changelog: pages/reference/changelog.md
 
 extra:
   social:
