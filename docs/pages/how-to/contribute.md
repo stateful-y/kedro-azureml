@@ -27,7 +27,7 @@
 4. Install the git hooks (required):
 
     ```bash
-    uv run prek install
+    uv run prek install -f
     ```
 
 ## Make changes
