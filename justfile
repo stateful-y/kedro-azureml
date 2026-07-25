@@ -49,9 +49,9 @@ fix:
 
 # Build documentation (prebuild generates API pages + notebooks; postbuild exports LLM markdown)
 build:
-    uv run --group docs python docs_build/build.py prebuild
-    uv run --group docs python -m mkdocs build --clean
-    uv run --group docs python docs_build/build.py postbuild site
+    uv run python docs_build/build.py prebuild
+    uv run zensical build
+    uv run python docs_build/build.py postbuild site
 
 # Serve documentation locally with live API regeneration on source edits
 serve:
@@ -60,7 +60,7 @@ serve:
 
 # Check built docs for dead links (build first with 'just build')
 link:
-    uvx linkchecker site/index.html --no-status --no-warnings --ignore-url 'material/overrides'
+    uvx linkchecker site/index.html --no-status --no-warnings
 
 # Clean build artifacts
 clean:
