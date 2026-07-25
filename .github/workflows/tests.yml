@@ -34,6 +34,8 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
+          # renovate: datasource=github-releases depName=astral-sh/uv
+          version: "0.10.0"
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
 
@@ -43,7 +45,8 @@ jobs:
         run: echo "$USERPROFILE/.local/bin" >> $GITHUB_PATH
 
       - name: Install nox
-        run: uv tool install nox
+        # renovate: datasource=pypi depName=nox
+        run: uv tool install nox==2026.7.11
 
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
@@ -71,11 +74,14 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
+          # renovate: datasource=github-releases depName=astral-sh/uv
+          version: "0.10.0"
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
 
       - name: Install nox
-        run: uv tool install nox
+        # renovate: datasource=pypi depName=nox
+        run: uv tool install nox==2026.7.11
 
       - name: Set up Python 3.11
         run: uv python install 3.11
@@ -106,11 +112,14 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
+          # renovate: datasource=github-releases depName=astral-sh/uv
+          version: "0.10.0"
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
 
       - name: Install nox
-        run: uv tool install nox
+        # renovate: datasource=pypi depName=nox
+        run: uv tool install nox==2026.7.11
 
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
@@ -151,11 +160,14 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
+          # renovate: datasource=github-releases depName=astral-sh/uv
+          version: "0.10.0"
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
 
       - name: Install nox
-        run: uv tool install nox
+        # renovate: datasource=pypi depName=nox
+        run: uv tool install nox==2026.7.11
 
       - name: Set up Python
         run: uv python install
@@ -178,11 +190,14 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
+          # renovate: datasource=github-releases depName=astral-sh/uv
+          version: "0.10.0"
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
 
       - name: Install nox
-        run: uv tool install nox
+        # renovate: datasource=pypi depName=nox
+        run: uv tool install nox==2026.7.11
 
       - name: Set up Python
         run: uv python install 3.11
@@ -204,18 +219,88 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
+          # renovate: datasource=github-releases depName=astral-sh/uv
+          version: "0.10.0"
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
 
       - name: Install nox
-        run: uv tool install nox
+        # renovate: datasource=pypi depName=nox
+        run: uv tool install nox==2026.7.11
 
       - name: Set up Python
         run: uv python install 3.11
 
-      # docs/hooks.py warns when a marker resolves to nothing. Nothing ran with
+      # docs_build/_markers.py warns when a marker resolves to nothing. Nothing ran with
       # warnings fatal, so those warnings went to a log nobody reads and pages
       # kept silently shipping blank space where a card grid or an index should
       # be. This is the job that makes them count.
       - name: Build docs with warnings fatal
         run: nox -s check_docs
+
+      # A green --strict build is not proof the pages have content: an unresolved
+      # marker ships as an invisible HTML comment, and a docs_build extension that
+      # failed to load leaves every marker blank while the build stays green. These
+      # assertions are the content gate --strict cannot be.
+      - name: Assert the build shipped content, not blank markers
+        run: |
+          set -euo pipefail
+          if grep -rlE '<!-- (API_TABLE|SUBPAGES|GALLERY|EXAMPLES_FOR|COMPANION_NOTEBOOKS)[^>]*-->' site --include='*.html'; then
+            echo "::error::unresolved marker comment(s) in the built site -- a docs_build extension did not run"; exit 1
+          fi
+          # Assert the template's own build tooling did not leak. It lives outside
+          # docs_dir (docs_build/ and docs_theme/), so this guards the relocation:
+          # a botched theme merge would republish these. Deliberately NOT a blanket
+          # `*.py` check -- the successor engine ignores exclude_docs, so a project's
+          # OWN docs/*.py script (e.g. a dataset precache) now publishes as a static
+          # asset, and that is the project's file, not leaked tooling.
+          if find site \( -name '*.jinja' -o -name 'api-submodule.html' -o -path '*/material/*' -o -path '*/docs_theme/*' \) -print | grep -q .; then
+            echo "::error::build tooling (theme templates / API scaffold) leaked into the published site"; exit 1
+          fi
+          pages="$(find site/pages/api/generated -name index.html 2>/dev/null | wc -l)"
+          if [ "$pages" -eq 0 ]; then
+            echo "::error::no generated API pages -- the build.py prebuild step did not run"; exit 1
+          fi
+          anchors="$(grep -rohE 'id="[^"]+"' site --include='*.html' | wc -l)"
+          if [ "$anchors" -lt 100 ]; then
+            echo "::error::only $anchors anchors in the built site -- content collapsed"; exit 1
+          fi
+          echo "content OK: $pages generated API pages, $anchors anchors, no leaked markers or tooling"
+
+  # Non-blocking comparison build under Material for MkDocs during the transition
+  # to Zensical (the primary engine, gated by check_docs above). Material reaches
+  # a hard EOL on 2026-11-05; this job exists only to surface engine drift while
+  # both build the same mkdocs.yml, and is expected to be removed once Zensical
+  # has proven itself across the fleet. It never blocks the PR (continue-on-error).
+  #
+  # Note: this whole workflows/ directory is generated only when include_actions
+  # is true, so a project built without CI has no Zensical safety net here at all
+  # and relies on a local build instead.
+  compare_docs_mkdocs:
+    name: Docs build (MkDocs comparison, non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          # renovate: datasource=github-releases depName=astral-sh/uv
+          version: "0.10.0"
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Build docs under MkDocs (comparison only)
+        env:
+          MKDOCS_SKIP_NOTEBOOKS: "1"
+        run: |
+          uv run python docs_build/build.py prebuild
+          uv run --group docs mkdocs build --clean --strict

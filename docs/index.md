@@ -1,7 +1,7 @@
 ![](assets/logo_dark.png#only-dark){width=800}
 ![](assets/logo_light.png#only-light){width=800}
 
-# Welcome to Kedro AzureML Pipeline's documentation
+# Welcome to Kedro AzureML Pipeline's documentation!
 
 Kedro AzureML Pipeline is a [Kedro](https://docs.kedro.org/) plugin that connects your data science project to [Azure ML Pipelines](https://learn.microsoft.com/en-us/azure/machine-learning/concept-ml-pipelines). With a single CLI command you can run, schedule, and monitor Kedro pipelines on Azure ML managed compute without changing any of your existing Kedro code, catalog, or hooks.
 
