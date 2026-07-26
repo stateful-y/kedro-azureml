@@ -754,7 +754,7 @@ def schedule_jobs(
                             trigger_desc = f"cron: {schedule_cfg.cron.expression}"
                         else:
                             rec = schedule_cfg.recurrence
-                            assert rec is not None
+                            assert rec is not None  # noqa: S101 -- ScheduleConfig invariant: exactly one of cron/recurrence
                             trigger_desc = f"recurrence: every {rec.interval} {rec.frequency}(s)"
                         click.echo(
                             f"[DRY RUN] Would create schedule '{schedule_name}' "
@@ -793,7 +793,7 @@ def _format_schedule(schedule: "ScheduleConfig | str | list[ScheduleConfig | str
             parts.append(f"cron:{ref.cron.expression}")
         else:
             rec = ref.recurrence
-            assert rec is not None  # ScheduleConfig requires exactly one of cron/recurrence
+            assert rec is not None  # noqa: S101 -- ScheduleConfig requires exactly one of cron/recurrence
             parts.append(f"recurrence:every {rec.interval} {rec.frequency}(s)")
     return ", ".join(parts)
 

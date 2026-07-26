@@ -256,6 +256,7 @@ nav:
   - Explanation:
     - pages/explanation/index.md
     - Concepts: pages/explanation/concepts.md
+    - Security: pages/explanation/security.md
     - Job Factories: pages/explanation/job-factories.md
     - Architecture: pages/explanation/architecture.md
     - Data Flow Between Steps: pages/explanation/data-flow.md

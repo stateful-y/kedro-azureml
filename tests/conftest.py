@@ -67,7 +67,7 @@ def _disable_kedro_plugin_entrypoints(monkeypatch):
                     if dist_name and dist_name in allowed_set:
                         plugin = entry_point.load()
                         hook_manager.register(plugin, name=getattr(entry_point, "name", None))
-                except Exception:
+                except Exception:  # noqa: S112 -- best-effort test plugin registration; skip any entry point that fails to load
                     continue
 
             return hook_manager
