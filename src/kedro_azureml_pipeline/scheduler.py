@@ -86,7 +86,7 @@ def build_trigger(config: ScheduleConfig) -> CronTrigger | RecurrenceTrigger:
         return CronTrigger(**kwargs)
 
     rec = config.recurrence
-    assert rec is not None, "ScheduleConfig must have either cron or recurrence set"
+    assert rec is not None, "ScheduleConfig must have either cron or recurrence set"  # noqa: S101 -- ScheduleConfig invariant
 
     pattern: RecurrencePattern | None = None
     if rec.schedule:

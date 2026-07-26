@@ -69,7 +69,7 @@ class AzurePipelinesRunner(SequentialRunner):
         dict of str to Any
             Mapping of output dataset names to their values.
         """
-        assert isinstance(catalog, DataCatalog), f"AzurePipelinesRunner requires a DataCatalog, got {type(catalog)}"
+        assert isinstance(catalog, DataCatalog), f"AzurePipelinesRunner requires a DataCatalog, got {type(catalog)}"  # noqa: S101 -- runtime guard on the runner's catalog contract
         # Preserve Azure configs from existing datasets before copying
         azure_configs = {}
         for ds_name in catalog.filter():
