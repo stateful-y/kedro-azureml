@@ -1751,15 +1751,15 @@ tests = [
 
 [[package]]
 name = "kedro-datasets"
-version = "9.2.0"
+version = "9.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "kedro" },
     { name = "lazy-loader" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/27/91426a30417500e4a4d4d0c615185282c1421f5ec359675080b313809535/kedro_datasets-9.2.0.tar.gz", hash = "sha256:32f364d61d211add1187ddcfb4466284b90df6027560c89cd9232c8c28e9f645", size = 193785, upload-time = "2026-02-16T14:08:49.087Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/79/23/d252c0c4b84f320b3c052bd8b6040b7dc1404f7f99869eb996d8fee76d14/kedro_datasets-9.3.0.tar.gz", hash = "sha256:afb07b567736e3bd4008cd44ca8fa6a052e6f51686cb0dc9e592f5c7ac9907f3", size = 202987, upload-time = "2026-04-02T15:55:40.727Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/8d/6c774d512a4134150a9568d5b59c65530b4d71c7f57d651a10b0b10b7b2a/kedro_datasets-9.2.0-py3-none-any.whl", hash = "sha256:3309c3a21c25d87f055714d0a9fc3232f45803bb5e3b3c384d403acb9971ee29", size = 310169, upload-time = "2026-02-16T14:08:46.678Z" },
+    { url = "https://files.pythonhosted.org/packages/49/00/10948ec45d55303670af611575370465153eec2d7a5d95d344673680b03c/kedro_datasets-9.3.0-py3-none-any.whl", hash = "sha256:6638feb4c6932c513d18f1a6537975f73832687ac148e21e0a0390a99176d270", size = 322222, upload-time = "2026-04-02T15:55:38.426Z" },
 ]
 
 [[package]]
