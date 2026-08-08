@@ -1578,12 +1578,11 @@ wheels = [
 
 [[package]]
 name = "kedro"
-version = "1.2.0"
+version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "build" },
-    { name = "cachetools" },
     { name = "click" },
     { name = "cookiecutter" },
     { name = "dynaconf" },
@@ -1599,9 +1598,9 @@ dependencies = [
     { name = "tomli-w" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/70/41c1b8a31a06d0b28a7d7991594b19a797f0e639f79a98a5c602bb84fe65/kedro-1.2.0.tar.gz", hash = "sha256:822cbc132bd654a33ce9b467ba76160f71df80e546dbc0e3b6821e476aab4b28", size = 164230, upload-time = "2026-01-29T14:25:59.689Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/30/6d/830506d20c81ccbe39096345d437f781cd5093463b059c76a01dc99a243d/kedro-1.3.0.tar.gz", hash = "sha256:78f946de32f9dc988a4a167cf146ffdf162a3ce4347a52c7486af01c1f364eb0", size = 172134, upload-time = "2026-03-31T14:27:45.188Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/46/69266d69ee410d7e088772425a8cfbc28f0d7a7ca9fe9ae6cf9a5fe3b4d2/kedro-1.2.0-py3-none-any.whl", hash = "sha256:2dcc59ec430af8ecee8e085aa33a3c6064ea4afd782fa53152bb8450f5024306", size = 191784, upload-time = "2026-01-29T14:25:58.301Z" },
+    { url = "https://files.pythonhosted.org/packages/27/55/6003ec3498a869fe4661545e844ccc3560c88e5603db885ab044e7e6cf55/kedro-1.3.0-py3-none-any.whl", hash = "sha256:4d5f0faec9a3927d4866263565a8c80bb5cc80edec871a03dbde24db1afee8f0", size = 201232, upload-time = "2026-03-31T14:27:44.022Z" },
 ]
 
 [[package]]
