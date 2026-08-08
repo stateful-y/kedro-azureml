@@ -9,8 +9,11 @@ on:
     branches: ["main"]
     types: [opened, synchronize, reopened, ready_for_review]
 
+# Running tests reads; nothing here touches a pull request. This previously granted
+# `pull-requests: write`, which no step used, and left `contents` at none -- checkout
+# worked only because the repository is public and clones unauthenticated.
 permissions:
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
