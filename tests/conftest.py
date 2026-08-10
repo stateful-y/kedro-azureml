@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, patch
 import kedro.framework.session.session as _kedro_session_mod
 import pandas as pd
 import pytest
+from hypothesis import settings
+from hypothesis.database import DirectoryBasedExampleDatabase
 from kedro.framework import project as _kedro_project
 from kedro.io import DataCatalog
 from kedro.io.core import Version
@@ -20,6 +22,20 @@ from kedro_azureml_pipeline.datasets import AzureMLAssetDataset
 from kedro_azureml_pipeline.utils import CliContext
 from tests.scenarios.project_factory import KedroProjectOptions, build_kedro_project_scenario
 from tests.utils import identity
+
+# Hypothesis remembers failing examples so a rerun replays them first. That example
+# database defaults to `.hypothesis/` at the repo root; this puts it under
+# `.artifacts/` with every other piece of throwaway output. It has no config-file
+# key, so registering and loading a profile is the only way to set it -- which is why
+# this lives here rather than in pyproject.toml.
+#
+# This moves the example database ONLY. Hypothesis also writes a `.hypothesis/`
+# storage directory for its own constants and unicode caches, which no setting
+# relocates. Newer versions drop a self-ignoring `.gitignore` inside it and older
+# ones do not, so `.gitignore` lists it explicitly rather than depending on which
+# version resolved.
+settings.register_profile("default", database=DirectoryBasedExampleDatabase(".artifacts/hypothesis"))
+settings.load_profile("default")
 
 
 @pytest.fixture(autouse=True)
