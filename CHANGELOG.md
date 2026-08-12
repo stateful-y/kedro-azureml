@@ -28,7 +28,7 @@ This **minor release** includes 60 commits.
 - Resolve experiment ID from run metadata before start_run  by @gtauzin
 - Set experiment_name on scheduled pipeline jobs  ([#24](https://github.com/stateful-y/kedro-azureml-pipeline/pull/24)) by @gtauzin
 - Pin exact uv version in setup-uv steps (template v0.29.6)  ([#46](https://github.com/stateful-y/kedro-azureml-pipeline/pull/46)) by @gtauzin
-- Pin ossf/scorecard-action to v2.4.4 (@v2 tag does not exist) by @gtauzin
+- Pin ossf/scorecard-action to the existing v2.4.4 tag by @gtauzin
 - Grant tests-versions what it uses, not what it asked for  ([#63](https://github.com/stateful-y/kedro-azureml-pipeline/pull/63)) by @gtauzin
 - Raise mlflow floor to >=3.13 to keep pyarrow cp314-capable  ([#68](https://github.com/stateful-y/kedro-azureml-pipeline/pull/68)) by @gtauzin
 - Raise cryptography to 49.0.0  ([#78](https://github.com/stateful-y/kedro-azureml-pipeline/pull/78)) by @gtauzin
@@ -44,24 +44,24 @@ This **minor release** includes 60 commits.
 
 ### Miscellaneous Tasks
 - Commit uv.lock + fix ty diagnostics at the source  ([#29](https://github.com/stateful-y/kedro-azureml-pipeline/pull/29)) by @gtauzin
-- Update from template v0.26.1  ([#35](https://github.com/stateful-y/kedro-azureml-pipeline/pull/35)) by @gtauzin
-- Update from template v0.27.0  ([#36](https://github.com/stateful-y/kedro-azureml-pipeline/pull/36)) by @gtauzin
-- Update from template v0.27.3  ([#40](https://github.com/stateful-y/kedro-azureml-pipeline/pull/40)) by @gtauzin
-- Update from template v0.28.1  ([#41](https://github.com/stateful-y/kedro-azureml-pipeline/pull/41)) by @gtauzin
-- Update from template v0.28.3  ([#42](https://github.com/stateful-y/kedro-azureml-pipeline/pull/42)) by @gtauzin
-- Update from template v0.28.4  ([#43](https://github.com/stateful-y/kedro-azureml-pipeline/pull/43)) by @gtauzin
-- Update from template v0.29.3  ([#44](https://github.com/stateful-y/kedro-azureml-pipeline/pull/44)) by @gtauzin
-- Update from template v0.31.1 (Renovate replaces Dependabot)  ([#48](https://github.com/stateful-y/kedro-azureml-pipeline/pull/48)) by @gtauzin
-- Update to v0.32.1 (pre-push gates + CI roll-up)  ([#50](https://github.com/stateful-y/kedro-azureml-pipeline/pull/50)) by @gtauzin
+- Fix See Also links and root export 404s in the API docs (template v0.26.1)  ([#35](https://github.com/stateful-y/kedro-azureml-pipeline/pull/35)) by @gtauzin
+- Run pre-commit hooks with prek and filter changelog entries (template v0.27.0)  ([#36](https://github.com/stateful-y/kedro-azureml-pipeline/pull/36)) by @gtauzin
+- Exempt the docs build scripts from ruff's lint rules (template v0.27.3)  ([#40](https://github.com/stateful-y/kedro-azureml-pipeline/pull/40)) by @gtauzin
+- Render API page structure from mkdocstrings templates (template v0.28.1)  ([#41](https://github.com/stateful-y/kedro-azureml-pipeline/pull/41)) by @gtauzin
+- Discover the API surface with Griffe (template v0.28.3)  ([#42](https://github.com/stateful-y/kedro-azureml-pipeline/pull/42)) by @gtauzin
+- Replace stale git hooks by installing with prek install -f (template v0.28.4)  ([#43](https://github.com/stateful-y/kedro-azureml-pipeline/pull/43)) by @gtauzin
+- Make the generated docs build engine-independent (template v0.29.3)  ([#44](https://github.com/stateful-y/kedro-azureml-pipeline/pull/44)) by @gtauzin
+- Replace Dependabot with Renovate for dependency updates (template v0.31.1)  ([#48](https://github.com/stateful-y/kedro-azureml-pipeline/pull/48)) by @gtauzin
+- Add pre-push gates and a single CI roll-up check (template v0.32.1)  ([#50](https://github.com/stateful-y/kedro-azureml-pipeline/pull/50)) by @gtauzin
 - Add Versions passed roll-up to gate the version matrix  ([#51](https://github.com/stateful-y/kedro-azureml-pipeline/pull/51)) by @gtauzin
-- Sync to v0.35.0  ([#52](https://github.com/stateful-y/kedro-azureml-pipeline/pull/52)) by @gtauzin
-- Sync to v0.36.0 (Codecov OIDC + scorecard pin)  ([#53](https://github.com/stateful-y/kedro-azureml-pipeline/pull/53)) by @gtauzin
-- Sync to v0.37.0 (gitsign tag-signing docs)  ([#54](https://github.com/stateful-y/kedro-azureml-pipeline/pull/54)) by @gtauzin
-- Update from python-package-copier v0.38.0  ([#55](https://github.com/stateful-y/kedro-azureml-pipeline/pull/55)) by @gtauzin
-- Update from template v0.39.0  ([#56](https://github.com/stateful-y/kedro-azureml-pipeline/pull/56)) by @gtauzin
-- Update from template v0.39.1  ([#57](https://github.com/stateful-y/kedro-azureml-pipeline/pull/57)) by @gtauzin
-- Update from template v0.40.0  ([#58](https://github.com/stateful-y/kedro-azureml-pipeline/pull/58)) by @gtauzin
-- Update from template v0.40.1  ([#64](https://github.com/stateful-y/kedro-azureml-pipeline/pull/64)) by @gtauzin
+- Restrict workflow permissions and add secret scanning (template v0.35.0)  ([#52](https://github.com/stateful-y/kedro-azureml-pipeline/pull/52)) by @gtauzin
+- Switch Codecov to OIDC and pin the Scorecard action (template v0.36.0)  ([#53](https://github.com/stateful-y/kedro-azureml-pipeline/pull/53)) by @gtauzin
+- Document signing release tags with gitsign (template v0.37.0)  ([#54](https://github.com/stateful-y/kedro-azureml-pipeline/pull/54)) by @gtauzin
+- Add a CLAUDE.md project-instructions file for AI assistants (template v0.38.0)  ([#55](https://github.com/stateful-y/kedro-azureml-pipeline/pull/55)) by @gtauzin
+- Fix three release-pipeline defects (template v0.39.0)  ([#56](https://github.com/stateful-y/kedro-azureml-pipeline/pull/56)) by @gtauzin
+- Let Renovate see the SBOM tool's version pin (template v0.39.1)  ([#57](https://github.com/stateful-y/kedro-azureml-pipeline/pull/57)) by @gtauzin
+- Add a nightly job that exercises the release path (template v0.40.0)  ([#58](https://github.com/stateful-y/kedro-azureml-pipeline/pull/58)) by @gtauzin
+- Fix a shell injection in the release publish job (template v0.40.1)  ([#64](https://github.com/stateful-y/kedro-azureml-pipeline/pull/64)) by @gtauzin
 
 ### Build
 - Bump dawidd6/action-download-artifact from 19 to 20  ([#11](https://github.com/stateful-y/kedro-azureml-pipeline/pull/11)) by @dependabot[bot]
