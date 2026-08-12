@@ -317,6 +317,43 @@ class TestExecute:
             )
             assert result.exit_code == 0
 
+    def test_execute_uses_the_supported_run_parameter(
+        self,
+        patched_kedro_package,
+        cli_context,
+        dummy_pipeline,
+        dummy_plugin_config,
+        tmp_path: Path,
+    ):
+        """`pipeline_name` is deprecated; passing it logged a notice in every step.
+
+        Asserted on the call rather than on the absence of a log line, so this
+        still means something once Kedro removes the parameter and stops warning.
+        """
+        patched_azure_runner = AzurePipelinesRunner(data_paths={})
+        create_kedro_conf_dirs(tmp_path)
+        with (
+            patch("kedro_azureml_pipeline.runner.AzurePipelinesRunner", new=patched_azure_runner),
+            patch.dict("kedro.framework.project.pipelines", {"__default__": dummy_pipeline}),
+            patch(
+                "kedro_azureml_pipeline.manager.KedroContextManager.plugin_config",
+                new_callable=mock.PropertyMock,
+                return_value=dummy_plugin_config,
+            ),
+            patch.object(Path, "cwd", return_value=tmp_path),
+            patch("kedro.framework.session.KedroSession.run") as mock_run,
+        ):
+            runner = CliRunner()
+            runner.invoke(
+                cli.execute,
+                ["--node", "node1", "--az-output", "i2", str(tmp_path)],
+                obj=cli_context,
+            )
+
+        assert mock_run.called, "the execute command did not run the session"
+        assert mock_run.call_args.args == (), "the pipeline was passed positionally, which is `pipeline_name`"
+        assert mock_run.call_args.kwargs["pipeline_names"] == ["__default__"]
+
 
 class TestRun:
     """Tests for the ``kedro azureml run`` CLI command."""

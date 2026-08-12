@@ -471,7 +471,12 @@ def execute(
 
     with KedroContextManager(env=ctx.env, runtime_params=parameters) as mgr:
         runner = AzurePipelinesRunner(data_paths=data_paths)
-        mgr.session.run(pipeline, node_names=[node], runner=runner)
+        # `pipeline_names`, not positional: the first positional parameter of
+        # KedroSession.run is the deprecated `pipeline_name`, so passing it there
+        # logged a deprecation notice in every step of every job. It still works,
+        # which is the trap: nothing forces the fix until the parameter is removed
+        # and every cloud step fails at once.
+        mgr.session.run(pipeline_names=[pipeline], node_names=[node], runner=runner)
 
 
 @azureml_group.command("resolve-patterns")
