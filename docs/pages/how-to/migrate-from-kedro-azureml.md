@@ -2,8 +2,6 @@
 
 This guide migrates a working project from [`kedro-azureml`](https://github.com/getindata/kedro-azureml) v1.0.0 to `kedro-azureml-pipeline`. This plugin is a fork of that project, and its first release rewrote the configuration schema, the CLI, and the module layout, so an existing project needs changes in four places: its dependencies, its `azureml.yml`, its catalog, and the commands used to submit pipelines.
 
-Every lookup table this guide refers to lives in the [`kedro-azureml` mapping reference](../reference/kedro-azureml-mapping.md). The guide gives the procedure and the reasoning; the reference gives the exhaustive key-by-key and flag-by-flag tables.
-
 !!! note "Migrating a plain Kedro project instead?"
 
     If your project has never used an Azure ML plugin, you do not need this guide. Follow [Adopt Azure ML in an Existing Project](../tutorials/migrate-existing-project.md) instead.
@@ -16,7 +14,7 @@ Check these before you start, because two of them can block the migration outrig
 - **MLflow 3.13 or newer**, if you use the `mlflow` extra. Upstream pinned `mlflow >2.0.0,<3.0.0`, and this plugin requires `>=3.13`. The extra also now installs [`kedro-mlflow`](https://kedro-mlflow.readthedocs.io/).
 - **A working `kedro-azureml` v1.0.0 project.** Earlier upstream versions are not covered; migrate to v1.0.0 first.
 
-`adlfs` and `backoff` are no longer required, since the blob storage data passing that needed them has been removed. The full dependency comparison is in the [mapping reference](../reference/kedro-azureml-mapping.md#dependencies).
+`adlfs` and `backoff` are no longer required, since the blob storage data passing that needed them has been removed.
 
 !!! tip "A partial migration fails loudly"
 
@@ -53,7 +51,7 @@ If you do import from the plugin, note that three modules also moved:
 | `kedro_azureml.cli_functions` | `kedro_azureml_pipeline.cli.functions` |
 | `kedro_azureml.hooks` | `kedro_azureml_pipeline.hooks.local_run` and `.hooks.mlflow` |
 
-Everything else keeps its module path under the new root. The [module and class table](../reference/kedro-azureml-mapping.md#modules-and-classes) lists them all.
+Everything else keeps its module path under the new root.
 
 If you use distributed training, `@distributed_job` is unchanged apart from its import root. See [Run Distributed Training](run-distributed-training.md).
 
@@ -115,7 +113,7 @@ jobs:
     experiment_name: "my-project"
 ```
 
-Work through the [configuration key table](../reference/kedro-azureml-mapping.md#configuration-keys) to confirm you have moved everything. Three rows are easy to get wrong:
+The example above covers every upstream key, so use it as the checklist. Three of the moves are easy to get wrong:
 
 - **`workspace_name` becomes `name`.** It is the same value, but the key is shorter now that it sits inside a named entry under `workspace`. This is the single most common mistake in this migration.
 - **`experiment_name` moves into the job**, and is now optional. A job without one falls back to the experiment name configured in `mlflow.yml`, so projects using [`kedro-mlflow`](use-mlflow.md) can leave it out entirely and keep one source of truth.
@@ -177,12 +175,14 @@ kedro azureml run -j training
 
 The payoff is that the job is now reviewable, version-controlled, and reusable across ad-hoc runs, schedules, and CI. The flags that survive unchanged are the per-invocation ones: `--params`, `--env-var`, `--load-versions`, `--aml-env`, `--wait-for-completion`, and `--on-job-scheduled`. `-e`/`--env` on the command group is unchanged too.
 
-Two replacements are worth memorising:
+The flags that no longer exist are these:
 
 - `-s`/`--subscription-id` becomes `-w`/`--workspace`, which names an entry under `workspace` rather than passing a bare subscription ID.
 - `-p`/`--pipeline` becomes the job's `pipeline.pipeline_name`, selected with `-j`.
+- `-i`/`--image` becomes `--aml-env`, or `execution.environment` in config.
+- `kedro azureml init` takes no positional arguments and no `--aml-env`. Its `-a`/`--storage-account-name`, `-c`/`--storage-container`, and `--use-pipeline-data-passing` options are gone with blob storage.
 
-The [CLI flag tables](../reference/kedro-azureml-mapping.md#cli-flags) cover `init`, `run`, and `compile` in full.
+`compile` gained `--all` and `--check`, and `run` gained `--dry-run`. The full current surface is in the [CLI reference](../reference/cli.md).
 
 ## Step 6: Verify without touching Azure
 
@@ -232,7 +232,6 @@ The rewrite also added capabilities that have no upstream equivalent. None are r
 
 - **[Named workspaces](configure-multiple-workspaces.md).** Define dev, staging, and production workspaces alongside `__default__`, and target one with `-w`.
 - **[Schedules](schedule-pipelines.md).** Declare cron or recurrence triggers in config and deploy them with `kedro azureml schedule -j <job>`. Upstream had no scheduling support.
-- **Retry settings.** Give a job a [`retry`](../reference/configuration.md#retry) block to apply `max_retries` and `timeout` to every step.
 - **Job-level params.** Set [`params`](../reference/configuration.md#params) on a job so every step receives them, with CLI `--params` taking precedence.
 - **[Job factories](define-job-factories.md).** If your pipelines are namespaced per variant, define one templated `jobs` entry and let the concrete jobs be derived from the pipeline namespaces instead of writing near-identical blocks.
 
@@ -243,4 +242,4 @@ The rewrite also added capabilities that have no upstream equivalent. None are r
 - [Configure Multiple Workspaces](configure-multiple-workspaces.md) to promote across environments
 - [Deploy from CI/CD](deploy-from-cicd.md) to run `compile --check` on every pull request
 - [Troubleshoot](troubleshoot.md) if a migrated job fails to compile or submit
-- [`kedro-azureml` mapping reference](../reference/kedro-azureml-mapping.md) for the complete tables
+- [Configuration reference](../reference/configuration.md) and [CLI reference](../reference/cli.md) for the current schema and command surface

@@ -279,7 +279,6 @@ nav:
     - Configuration: pages/reference/configuration.md
     - CLI: pages/reference/cli.md
     - Datasets: pages/reference/datasets.md
-    - kedro-azureml Mapping: pages/reference/kedro-azureml-mapping.md
     - API: pages/reference/api.md
     - Changelog: pages/reference/changelog.md
 
