@@ -6,6 +6,89 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.1.0-alpha.3] - 2026-08-12
+
+This **minor release** includes 60 commits.
+
+
+### Features
+- Add retry configuration for pipeline steps  ([#15](https://github.com/stateful-y/kedro-azureml-pipeline/pull/15)) by @gtauzin
+- Add `kedro azureml schedule --delete` CLI command  ([#16](https://github.com/stateful-y/kedro-azureml-pipeline/pull/16)) by @gtauzin
+- Support Pydantic models in param resolution (Kedro 1.3 compat)  ([#20](https://github.com/stateful-y/kedro-azureml-pipeline/pull/20)) by @gtauzin
+- Add job-level params field to JobConfig with CLI merge  ([#25](https://github.com/stateful-y/kedro-azureml-pipeline/pull/25)) by @gtauzin
+- Resolve job factories from pipeline namespaces + multi-schedule jobs  ([#26](https://github.com/stateful-y/kedro-azureml-pipeline/pull/26)) by @gtauzin
+- Make uv.lock the single source of truth for lint tooling  ([#33](https://github.com/stateful-y/kedro-azureml-pipeline/pull/33)) by @gtauzin
+
+### Bug Fixes
+- Relax kedro-mlflow pin to >=1.0.0 in mlflow extra  ([#17](https://github.com/stateful-y/kedro-azureml-pipeline/pull/17)) by @gtauzin
+- Gracefully handle missing azureml workspace config and resolve dataset factories in data_path  ([#18](https://github.com/stateful-y/kedro-azureml-pipeline/pull/18)) by @gtauzin
+- Wrap Docker image URIs in Environment object  ([#21](https://github.com/stateful-y/kedro-azureml-pipeline/pull/21)) by @gtauzin
+- Don't call set_experiment before resuming AzureML run (avoids experiment ID mismatch) by @gtauzin
+- Don't call set_experiment before resuming AzureML run (avoids experiment ID mismatch)  ([#22](https://github.com/stateful-y/kedro-azureml-pipeline/pull/22)) by @gtauzin
+- Resolve experiment ID from run metadata before start_run  by @gtauzin
+- Set experiment_name on scheduled pipeline jobs  ([#24](https://github.com/stateful-y/kedro-azureml-pipeline/pull/24)) by @gtauzin
+- Pin exact uv version in setup-uv steps (template v0.29.6)  ([#46](https://github.com/stateful-y/kedro-azureml-pipeline/pull/46)) by @gtauzin
+- Pin ossf/scorecard-action to the existing v2.4.4 tag by @gtauzin
+- Grant tests-versions what it uses, not what it asked for  ([#63](https://github.com/stateful-y/kedro-azureml-pipeline/pull/63)) by @gtauzin
+- Raise mlflow floor to >=3.13 to keep pyarrow cp314-capable  ([#68](https://github.com/stateful-y/kedro-azureml-pipeline/pull/68)) by @gtauzin
+- Raise cryptography to 49.0.0  ([#78](https://github.com/stateful-y/kedro-azureml-pipeline/pull/78)) by @gtauzin
+- Name the nightly coverage upload's file and discover every Codecov workflow  ([#80](https://github.com/stateful-y/kedro-azureml-pipeline/pull/80)) by @gtauzin
+- Unblock PyPI publishing and split the nightly by interpreter  ([#83](https://github.com/stateful-y/kedro-azureml-pipeline/pull/83)) by @gtauzin
+
+### Documentation
+- Fix license link to point to repository LICENSE file  ([#14](https://github.com/stateful-y/kedro-azureml-pipeline/pull/14)) by @gtauzin
+- Migrate documentation engine to Zensical (template v0.30.1)  ([#47](https://github.com/stateful-y/kedro-azureml-pipeline/pull/47)) by @gtauzin
+
+### Refactoring
+- Move throwaway build output under .artifacts/ and CODEOWNERS into .github/  ([#79](https://github.com/stateful-y/kedro-azureml-pipeline/pull/79)) by @gtauzin
+
+### Miscellaneous Tasks
+- Commit uv.lock + fix ty diagnostics at the source  ([#29](https://github.com/stateful-y/kedro-azureml-pipeline/pull/29)) by @gtauzin
+- Fix See Also links and root export 404s in the API docs (template v0.26.1)  ([#35](https://github.com/stateful-y/kedro-azureml-pipeline/pull/35)) by @gtauzin
+- Run pre-commit hooks with prek and filter changelog entries (template v0.27.0)  ([#36](https://github.com/stateful-y/kedro-azureml-pipeline/pull/36)) by @gtauzin
+- Exempt the docs build scripts from ruff's lint rules (template v0.27.3)  ([#40](https://github.com/stateful-y/kedro-azureml-pipeline/pull/40)) by @gtauzin
+- Render API page structure from mkdocstrings templates (template v0.28.1)  ([#41](https://github.com/stateful-y/kedro-azureml-pipeline/pull/41)) by @gtauzin
+- Discover the API surface with Griffe (template v0.28.3)  ([#42](https://github.com/stateful-y/kedro-azureml-pipeline/pull/42)) by @gtauzin
+- Replace stale git hooks by installing with prek install -f (template v0.28.4)  ([#43](https://github.com/stateful-y/kedro-azureml-pipeline/pull/43)) by @gtauzin
+- Make the generated docs build engine-independent (template v0.29.3)  ([#44](https://github.com/stateful-y/kedro-azureml-pipeline/pull/44)) by @gtauzin
+- Replace Dependabot with Renovate for dependency updates (template v0.31.1)  ([#48](https://github.com/stateful-y/kedro-azureml-pipeline/pull/48)) by @gtauzin
+- Add pre-push gates and a single CI roll-up check (template v0.32.1)  ([#50](https://github.com/stateful-y/kedro-azureml-pipeline/pull/50)) by @gtauzin
+- Add Versions passed roll-up to gate the version matrix  ([#51](https://github.com/stateful-y/kedro-azureml-pipeline/pull/51)) by @gtauzin
+- Restrict workflow permissions and add secret scanning (template v0.35.0)  ([#52](https://github.com/stateful-y/kedro-azureml-pipeline/pull/52)) by @gtauzin
+- Switch Codecov to OIDC and pin the Scorecard action (template v0.36.0)  ([#53](https://github.com/stateful-y/kedro-azureml-pipeline/pull/53)) by @gtauzin
+- Document signing release tags with gitsign (template v0.37.0)  ([#54](https://github.com/stateful-y/kedro-azureml-pipeline/pull/54)) by @gtauzin
+- Add a CLAUDE.md project-instructions file for AI assistants (template v0.38.0)  ([#55](https://github.com/stateful-y/kedro-azureml-pipeline/pull/55)) by @gtauzin
+- Fix three release-pipeline defects (template v0.39.0)  ([#56](https://github.com/stateful-y/kedro-azureml-pipeline/pull/56)) by @gtauzin
+- Let Renovate see the SBOM tool's version pin (template v0.39.1)  ([#57](https://github.com/stateful-y/kedro-azureml-pipeline/pull/57)) by @gtauzin
+- Add a nightly job that exercises the release path (template v0.40.0)  ([#58](https://github.com/stateful-y/kedro-azureml-pipeline/pull/58)) by @gtauzin
+- Fix a shell injection in the release publish job (template v0.40.1)  ([#64](https://github.com/stateful-y/kedro-azureml-pipeline/pull/64)) by @gtauzin
+
+### Build
+- Bump dawidd6/action-download-artifact from 19 to 20  ([#11](https://github.com/stateful-y/kedro-azureml-pipeline/pull/11)) by @dependabot[bot]
+- Bump actions/github-script from 8 to 9  ([#10](https://github.com/stateful-y/kedro-azureml-pipeline/pull/10)) by @dependabot[bot]
+- Bump dawidd6/action-download-artifact from 20 to 21  ([#19](https://github.com/stateful-y/kedro-azureml-pipeline/pull/19)) by @dependabot[bot]
+- Bump codecov/codecov-action from 6 to 7  ([#27](https://github.com/stateful-y/kedro-azureml-pipeline/pull/27)) by @dependabot[bot]
+- Bump actions/checkout from 6 to 7  ([#28](https://github.com/stateful-y/kedro-azureml-pipeline/pull/28)) by @dependabot[bot]
+- Bump the lint-tools group across 1 directory with 3 updates  ([#39](https://github.com/stateful-y/kedro-azureml-pipeline/pull/39)) by @dependabot[bot]
+- Bump gitpython from 3.1.46 to 3.1.58  ([#61](https://github.com/stateful-y/kedro-azureml-pipeline/pull/61)) by @dependabot[bot]
+- Bump pyasn1 from 0.6.3 to 0.6.4  ([#67](https://github.com/stateful-y/kedro-azureml-pipeline/pull/67)) by @dependabot[bot]
+- Bump pyjwt from 2.12.1 to 2.13.0  ([#66](https://github.com/stateful-y/kedro-azureml-pipeline/pull/66)) by @dependabot[bot]
+- Bump pillow from 12.1.1 to 12.3.0  ([#65](https://github.com/stateful-y/kedro-azureml-pipeline/pull/65)) by @dependabot[bot]
+- Bump starlette from 1.0.0 to 1.3.1  ([#69](https://github.com/stateful-y/kedro-azureml-pipeline/pull/69)) by @dependabot[bot]
+- Bump idna from 3.11 to 3.15  ([#71](https://github.com/stateful-y/kedro-azureml-pipeline/pull/71)) by @dependabot[bot]
+- Bump pytest from 9.0.2 to 9.0.3  ([#72](https://github.com/stateful-y/kedro-azureml-pipeline/pull/72)) by @dependabot[bot]
+- Bump mako from 1.3.10 to 1.3.12  ([#73](https://github.com/stateful-y/kedro-azureml-pipeline/pull/73)) by @dependabot[bot]
+- Bump urllib3 from 2.6.3 to 2.7.0  ([#74](https://github.com/stateful-y/kedro-azureml-pipeline/pull/74)) by @dependabot[bot]
+- Bump kedro-datasets from 9.2.0 to 9.3.0  ([#75](https://github.com/stateful-y/kedro-azureml-pipeline/pull/75)) by @dependabot[bot]
+- Bump requests from 2.32.5 to 2.33.0  ([#77](https://github.com/stateful-y/kedro-azureml-pipeline/pull/77)) by @dependabot[bot]
+- Bump kedro from 1.2.0 to 1.3.0  ([#76](https://github.com/stateful-y/kedro-azureml-pipeline/pull/76)) by @dependabot[bot]
+
+### Contributors
+
+Thanks to all contributors for this release:
+- @dependabot[bot]
+- @gtauzin
+
 ## [0.1.0-alpha.2] - 2026-04-15
 
 This **minor release** includes 1 commit.
