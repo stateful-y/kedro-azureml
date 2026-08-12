@@ -4,7 +4,7 @@ import json
 import logging
 import os
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def is_distributed_master_node() -> bool:
