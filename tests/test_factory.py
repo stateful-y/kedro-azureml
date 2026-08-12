@@ -105,6 +105,12 @@ def test_render_job_passes_through_non_string_leaves():
     assert job.params["limit"] == 3600
 
 
+def test_render_job_templates_limits():
+    """`limits` survives templating alongside the other job fields."""
+    job = _render_job({"pipeline": {"pipeline_name": "p"}, "limits": {"timeout": 3600}}, {})
+    assert job.limits.timeout == 3600
+
+
 def test_matches_job_type():
     assert _matches_job_type("x-inference", None) is True  # no job constraint
     assert _matches_job_type("x-inference", "inference") is True

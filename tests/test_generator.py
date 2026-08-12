@@ -5,7 +5,7 @@ from azure.ai.ml.entities import Environment, Job
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from kedro_azureml_pipeline.config import ClusterConfig
+from kedro_azureml_pipeline.config import ClusterConfig, LimitsConfig
 from kedro_azureml_pipeline.constants import (
     KEDRO_AZUREML_MLFLOW_ENABLED,
     KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME,
@@ -169,6 +169,60 @@ class TestEnvironmentVariables:
             validation = az_pipeline._validate()
             warnings = [str(w) for w in (validation._warnings or [])]
             assert not any("retry_settings" in w for w in warnings), warnings
+
+    def test_limits_reach_every_step_and_the_payload(self, dummy_plugin_config, dummy_pipeline, multi_catalog):
+        """A configured timeout reaches every step and survives serialization.
+
+        Asserting ``step.limits.timeout == 1800`` alone would pass whether or not
+        the SDK recognises the field, which is the flaw that let the old retry
+        setting look functional for months. So this also asserts the value reaches
+        the serialized payload and that validation reports no ``Unknown field``.
+        """
+        limits = LimitsConfig(timeout=1800)
+        with patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline):
+            generator = AzureMLPipelineGenerator(
+                "test_limits",
+                "local",
+                dummy_plugin_config,
+                {},
+                catalog=multi_catalog,
+                aml_env="test@latest",
+                limits_config=limits,
+            )
+            az_pipeline = generator.generate()
+
+            assert az_pipeline.jobs
+            for step in az_pipeline.jobs.values():
+                assert step.limits is not None
+                assert step.limits.timeout == 1800
+
+            az_pipeline.settings.default_compute = "cpu"
+
+            validation = az_pipeline._validate()
+            warnings = [str(w) for w in (validation._warnings or [])]
+            assert not any("limits" in w for w in warnings), warnings
+
+            payload = az_pipeline._to_rest_object().as_dict()
+            for node in payload["properties"]["jobs"].values():
+                assert "limits" in node, sorted(node)
+                # Seconds become an ISO 8601 duration only if a schema serializer
+                # handled the value; a passed-through object would not convert.
+                assert node["limits"]["timeout"] == "PT30M", node["limits"]
+
+    def test_no_limits_by_default(self, dummy_plugin_config, dummy_pipeline, multi_catalog):
+        """Without limits_config, steps run uncapped."""
+        with patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline):
+            generator = AzureMLPipelineGenerator(
+                "test_no_limits",
+                "local",
+                dummy_plugin_config,
+                {},
+                catalog=multi_catalog,
+                aml_env="test@latest",
+            )
+            az_pipeline = generator.generate()
+            for step in az_pipeline.jobs.values():
+                assert not getattr(step, "limits", None)
 
     def test_auto_sets_kedro_env(self, dummy_plugin_config, dummy_pipeline, multi_catalog):
         pipeline_name = "unit_test_pipeline"

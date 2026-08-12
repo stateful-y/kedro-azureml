@@ -155,6 +155,8 @@ jobs:
     schedule: "business_hours"
     params:
       lookback_days: 30
+    limits:
+      timeout: 3600
 ```
 
 | Field | Default | Description |
@@ -166,6 +168,7 @@ jobs:
 | `compute` | `null` | Named compute entry; falls back to `__default__` |
 | `schedule` | `null` | Inline `ScheduleConfig`, named schedule string, a **list** of either (one trigger deployed per entry), or `null` for ad-hoc |
 | `params` | `null` | Job-scoped runtime parameters merged into the pipeline on `compile`, `run`, and `schedule` (see below) |
+| `limits` | `null` | Run-duration limits applied to every step in the job (see below) |
 | `description` | `null` | Human-readable job description |
 
 ### `params`
@@ -217,6 +220,25 @@ jobs:
 There is no separate target list or provider key: the jobs are always derived from the pipeline namespaces, so adding a variant to your pipelines yields its job with no config edit.
 
 For the dataset-factory analogy and why resolution is forward-only, see [Job Factories](../explanation/job-factories.md); for a step-by-step recipe, see [Define jobs with factories](../how-to/define-job-factories.md).
+
+### `limits`
+
+Optional run-duration limits applied to every command step in the job. Maps to [`azure.ai.ml.entities.CommandJobLimits`](https://learn.microsoft.com/en-us/python/api/azure-ai-ml/azure.ai.ml.entities.commandjoblimits).
+
+```yaml
+limits:
+  timeout: 3600
+```
+
+| Field | Default | Description |
+|---|---|---|
+| `timeout` | required | Maximum run duration in seconds, after which Azure ML cancels the step (must be >= 1) |
+
+The timeout is a hang guard rather than an expected duration. When it is reached, Azure ML cancels the step and releases the compute instances it was holding, so a wedged step does not occupy a cluster indefinitely. Set it above your slowest realistic run, not at it.
+
+!!! warning "There is no retry setting"
+
+    Azure ML declares `RetrySettings` for parallel and sweep jobs only. This plugin compiles every Kedro node into a **command** step, so a retry setting would be accepted by the SDK as an unknown field and then ignored by the service. `limits` is offered because the command-step contract acts on it; retries are not available and a failed step is not re-run.
 
 ### `pipeline` filter options
 

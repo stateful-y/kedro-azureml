@@ -299,6 +299,45 @@ class ScheduleConfig(BaseModel):
         return self
 
 
+class LimitsConfig(BaseModel):
+    """Run-duration limits for Azure ML pipeline steps.
+
+    Maps to ``azure.ai.ml.entities.CommandJobLimits`` applied on each invoked
+    command component. The timeout is a hang guard rather than an expected
+    duration: Azure ML cancels the step once it is reached, releasing the
+    instances the step was holding.
+
+    Retry settings are deliberately absent. ``RetrySettings`` is declared for
+    parallel and sweep jobs only, so on a command step the Azure ML SDK reports
+    it as an unknown field and the service ignores it. Azure ML does not retry
+    command steps, and this plugin emits only command steps.
+
+    Parameters
+    ----------
+    timeout : int
+        Maximum run duration in seconds, after which the step is cancelled.
+
+    Examples
+    --------
+    ```yaml
+    jobs:
+      nightly:
+        pipeline:
+          pipeline_name: data_processing
+        limits:
+          timeout: 3600
+    ```
+
+    See Also
+    --------
+    [JobConfig][kedro_azureml_pipeline.config.JobConfig] : Uses limits per job.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    timeout: int = Field(ge=1, description="Maximum run duration in seconds, after which the step is cancelled.")
+
+
 class PipelineFilterOptions(BaseModel):
     """Kedro pipeline filter options for selecting nodes.
 
@@ -377,6 +416,8 @@ class JobConfig(BaseModel):
         Inline schedule, named schedule reference, or ``None`` for ad-hoc.
     params : dict of str to Any or None
         Job-level runtime parameters merged into every step. CLI --params take precedence.
+    limits : LimitsConfig or None
+        Run-duration limits applied to every step in this job.
     description : str or None
         Human-readable job description.
 
@@ -394,12 +435,15 @@ class JobConfig(BaseModel):
         schedule:
           cron:
             expression: "0 2 * * *"
+        limits:
+          timeout: 3600
     ```
 
     See Also
     --------
     [PipelineFilterOptions][kedro_azureml_pipeline.config.PipelineFilterOptions] : Pipeline node filtering.
     [ScheduleConfig][kedro_azureml_pipeline.config.ScheduleConfig] : Schedule trigger specification.
+    [LimitsConfig][kedro_azureml_pipeline.config.LimitsConfig] : Run-duration limits.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -416,6 +460,9 @@ class JobConfig(BaseModel):
     params: dict[str, Any] | None = Field(
         default=None,
         description="Job-level runtime parameters merged into every step. CLI --params take precedence.",
+    )
+    limits: LimitsConfig | None = Field(
+        default=None, description="Run-duration limits applied to every step in this job."
     )
     description: str | None = Field(default=None, description="Human-readable job description.")
 

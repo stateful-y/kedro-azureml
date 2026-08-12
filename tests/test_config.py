@@ -14,6 +14,7 @@ from kedro_azureml_pipeline.config import (
     ExecutionConfig,
     JobConfig,
     KedroAzureMLConfig,
+    LimitsConfig,
     PipelineFilterOptions,
     RecurrencePatternConfig,
     RecurrenceScheduleConfig,
@@ -173,6 +174,30 @@ class TestPipelineFilterOptions:
         assert opts.to_filter_kwargs() == {"tags": ["etl"]}
 
 
+class TestLimitsConfig:
+    """Run-duration limit validation."""
+
+    def test_basic_creation(self):
+        lc = LimitsConfig(timeout=3600)
+        assert lc.timeout == 3600
+
+    def test_zero_timeout_raises(self):
+        with pytest.raises(ValidationError):
+            LimitsConfig(timeout=0)
+
+    def test_negative_timeout_raises(self):
+        with pytest.raises(ValidationError):
+            LimitsConfig(timeout=-1)
+
+    def test_timeout_is_required(self):
+        with pytest.raises(ValidationError):
+            LimitsConfig()
+
+    def test_extra_fields_forbidden(self):
+        with pytest.raises(ValidationError):
+            LimitsConfig(timeout=60, max_retries=3)
+
+
 class TestJobConfig:
     """Job config defaults and optional fields."""
 
@@ -252,6 +277,32 @@ jobs:
         assert cfg.workspace.resolve().name == "ws"
         assert "daily" in cfg.schedules
         assert cfg.jobs["etl"].schedule == "daily"
+
+    def test_yaml_round_trip_with_limits(self):
+        """`limits` survives a full YAML round trip through the top-level config."""
+        raw = """
+workspace:
+  __default__:
+    subscription_id: "sub"
+    resource_group: "rg"
+    name: "ws"
+compute:
+  __default__:
+    cluster_name: "cpu"
+jobs:
+  inference:
+    pipeline:
+      pipeline_name: model_inference
+    limits:
+      timeout: 3600
+"""
+        cfg = KedroAzureMLConfig.model_validate(yaml.safe_load(raw))
+        assert cfg.jobs["inference"].limits is not None
+        assert cfg.jobs["inference"].limits.timeout == 3600
+
+    def test_limits_default_none(self):
+        jc = JobConfig(pipeline=PipelineFilterOptions(pipeline_name="pipe"))
+        assert jc.limits is None
 
     def test_yaml_with_retry_is_rejected(self):
         """`retry` was removed; extra="forbid" must surface it by name, not ignore it.
