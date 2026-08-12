@@ -299,30 +299,6 @@ class ScheduleConfig(BaseModel):
         return self
 
 
-class RetryConfig(BaseModel):
-    """Retry settings for Azure ML pipeline steps.
-
-    Maps to ``azure.ai.ml.entities.RetrySettings`` applied on each
-    invoked command component.
-
-    Parameters
-    ----------
-    max_retries : int
-        Maximum number of retry attempts for failed steps.
-    timeout : int or None
-        Per-attempt timeout in seconds, or ``None`` for no limit.
-
-    See Also
-    --------
-    [JobConfig][kedro_azureml_pipeline.config.JobConfig] : Uses retry settings per job.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    max_retries: int = Field(ge=1, description="Maximum number of retry attempts for failed steps.")
-    timeout: int | None = Field(default=None, ge=1, description="Per-attempt timeout in seconds, or None for no limit.")
-
-
 class PipelineFilterOptions(BaseModel):
     """Kedro pipeline filter options for selecting nodes.
 
@@ -401,8 +377,6 @@ class JobConfig(BaseModel):
         Inline schedule, named schedule reference, or ``None`` for ad-hoc.
     params : dict of str to Any or None
         Job-level runtime parameters merged into every step. CLI --params take precedence.
-    retry : RetryConfig or None
-        Retry settings applied to every step in this job.
     description : str or None
         Human-readable job description.
 
@@ -420,16 +394,12 @@ class JobConfig(BaseModel):
         schedule:
           cron:
             expression: "0 2 * * *"
-        retry:
-          max_retries: 3
-          timeout: 3600
     ```
 
     See Also
     --------
     [PipelineFilterOptions][kedro_azureml_pipeline.config.PipelineFilterOptions] : Pipeline node filtering.
     [ScheduleConfig][kedro_azureml_pipeline.config.ScheduleConfig] : Schedule trigger specification.
-    [RetryConfig][kedro_azureml_pipeline.config.RetryConfig] : Retry settings.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -447,7 +417,6 @@ class JobConfig(BaseModel):
         default=None,
         description="Job-level runtime parameters merged into every step. CLI --params take precedence.",
     )
-    retry: RetryConfig | None = Field(default=None, description="Retry settings applied to every step in this job.")
     description: str | None = Field(default=None, description="Human-readable job description.")
 
 

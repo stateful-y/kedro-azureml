@@ -155,9 +155,6 @@ jobs:
     schedule: "business_hours"
     params:
       lookback_days: 30
-    retry:
-      max_retries: 3
-      timeout: 3600
 ```
 
 | Field | Default | Description |
@@ -169,7 +166,6 @@ jobs:
 | `compute` | `null` | Named compute entry; falls back to `__default__` |
 | `schedule` | `null` | Inline `ScheduleConfig`, named schedule string, a **list** of either (one trigger deployed per entry), or `null` for ad-hoc |
 | `params` | `null` | Job-scoped runtime parameters merged into the pipeline on `compile`, `run`, and `schedule` (see below) |
-| `retry` | `null` | Retry settings applied to every step (see below) |
 | `description` | `null` | Human-readable job description |
 
 ### `params`
@@ -221,21 +217,6 @@ jobs:
 There is no separate target list or provider key: the jobs are always derived from the pipeline namespaces, so adding a variant to your pipelines yields its job with no config edit.
 
 For the dataset-factory analogy and why resolution is forward-only, see [Job Factories](../explanation/job-factories.md); for a step-by-step recipe, see [Define jobs with factories](../how-to/define-job-factories.md).
-
-### `retry`
-
-Optional retry settings applied to every command step in the job. Maps to [`azure.ai.ml.entities.RetrySettings`](https://learn.microsoft.com/en-us/python/api/azure-ai-ml/azure.ai.ml.entities.retrysettings).
-
-```yaml
-retry:
-  max_retries: 3
-  timeout: 3600
-```
-
-| Field | Default | Description |
-|---|---|---|
-| `max_retries` | required | Maximum number of retry attempts for failed steps (must be >= 1) |
-| `timeout` | `null` | Per-attempt timeout in seconds, or `null` for no limit |
 
 ### `pipeline` filter options
 

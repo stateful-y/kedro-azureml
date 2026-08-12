@@ -5,7 +5,7 @@ from azure.ai.ml.entities import Environment, Job
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from kedro_azureml_pipeline.config import ClusterConfig, RetryConfig
+from kedro_azureml_pipeline.config import ClusterConfig
 from kedro_azureml_pipeline.constants import (
     KEDRO_AZUREML_MLFLOW_ENABLED,
     KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME,
@@ -143,27 +143,14 @@ class TestEnvironmentVariables:
             for node in generator.generate().jobs.values():
                 assert node.environment_variables["ABC"] == "def"
 
-    def test_retry_settings_applied_to_all_steps(self, dummy_plugin_config, dummy_pipeline, multi_catalog):
-        """When retry_config is set, every step gets RetrySettings."""
-        retry = RetryConfig(max_retries=3, timeout=1800)
-        with patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline):
-            generator = AzureMLPipelineGenerator(
-                "test_retry",
-                "local",
-                dummy_plugin_config,
-                {},
-                catalog=multi_catalog,
-                aml_env="test@latest",
-                retry_config=retry,
-            )
-            az_pipeline = generator.generate()
-            for step in az_pipeline.jobs.values():
-                assert step.retry_settings is not None
-                assert step.retry_settings.max_retries == 3
-                assert step.retry_settings.timeout == 1800
+    def test_no_retry_settings_on_any_step(self, dummy_plugin_config, dummy_pipeline, multi_catalog):
+        """Command steps carry no retry settings, and the SDK accepts the result.
 
-    def test_no_retry_by_default(self, dummy_plugin_config, dummy_pipeline, multi_catalog):
-        """Without retry_config, steps have no retry settings."""
+        Azure ML honours ``retry_settings`` on parallel and sweep jobs, not on the
+        command steps this plugin emits. Asserting only that the attribute is absent
+        would pass even if it were reintroduced under another name, so this also
+        asserts the SDK raises no ``Unknown field`` warning for the generated job.
+        """
         with patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline):
             generator = AzureMLPipelineGenerator(
                 "test_no_retry",
@@ -174,27 +161,14 @@ class TestEnvironmentVariables:
                 aml_env="test@latest",
             )
             az_pipeline = generator.generate()
-            for step in az_pipeline.jobs.values():
-                assert not step.retry_settings
 
-    def test_retry_without_timeout(self, dummy_plugin_config, dummy_pipeline, multi_catalog):
-        """RetryConfig with only max_retries sets timeout to None."""
-        retry = RetryConfig(max_retries=2)
-        with patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline):
-            generator = AzureMLPipelineGenerator(
-                "test_retry_no_timeout",
-                "local",
-                dummy_plugin_config,
-                {},
-                catalog=multi_catalog,
-                aml_env="test@latest",
-                retry_config=retry,
-            )
-            az_pipeline = generator.generate()
             for step in az_pipeline.jobs.values():
-                assert step.retry_settings is not None
-                assert step.retry_settings.max_retries == 2
-                assert step.retry_settings.timeout is None
+                assert not getattr(step, "retry_settings", None)
+
+            az_pipeline.settings.default_compute = "cpu"
+            validation = az_pipeline._validate()
+            warnings = [str(w) for w in (validation._warnings or [])]
+            assert not any("retry_settings" in w for w in warnings), warnings
 
     def test_auto_sets_kedro_env(self, dummy_plugin_config, dummy_pipeline, multi_catalog):
         pipeline_name = "unit_test_pipeline"
