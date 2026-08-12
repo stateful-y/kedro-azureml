@@ -7,3 +7,4 @@ Explanation pages help you understand how the plugin works and the reasoning beh
 - [**Architecture Overview**](architecture.md): How the plugin translates Kedro pipelines into Azure ML pipeline jobs, the two execution contexts, and the compilation process.
 - [**Data Flow Between Steps**](data-flow.md): How data moves between pipeline steps during remote execution, the three dataset paths, and how the runner rewires paths at runtime.
 - [**Hook Lifecycle in Remote Execution**](hook-lifecycle.md): How the full Kedro hook lifecycle is preserved in remote steps, the bootstrap sequence, and kedro-mlflow coordination.
+- [**Security**](security.md): The hardened release pipeline, what each measure protects against, and how to verify a published release.
