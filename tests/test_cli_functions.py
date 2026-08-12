@@ -1,5 +1,6 @@
 """Tests for CLI helper functions."""
 
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -35,6 +36,48 @@ class TestParseRuntimeParams:
     def test_quoted_json(self):
         result = parse_runtime_params('\'{"key": "value"}\'', silent=True)
         assert result == {"key": "value"}
+
+    def test_the_report_is_a_log_record(self, caplog):
+        """This runs inside a step container as well as at a terminal.
+
+        Written straight to stdout the block carried no timestamp, level or node
+        identity, and was four unattributable lines per step in a consuming
+        project's merged job log. As a record it inherits whatever the
+        application configured, like every other line.
+        """
+        with caplog.at_level(logging.INFO, logger="kedro_azureml_pipeline.cli.functions"):
+            parse_runtime_params('{"arena_snapshot": "demo"}')
+
+        records = [r for r in caplog.records if "Running with extra parameters" in r.getMessage()]
+        assert records, "the parameter block did not go through logging"
+        assert records[0].name == "kedro_azureml_pipeline.cli.functions", (
+            "a record on the root logger cannot be levelled by package"
+        )
+
+    def test_an_operator_can_turn_the_report_down(self, caplog):
+        """The property stdout could never offer."""
+        with caplog.at_level(logging.WARNING, logger="kedro_azureml_pipeline.cli.functions"):
+            parse_runtime_params('{"arena_snapshot": "demo"}')
+
+        assert not [r for r in caplog.records if "Running with extra parameters" in r.getMessage()]
+
+    def test_the_block_is_not_echoed_anywhere(self):
+        """Structural: nothing may reintroduce the raw write."""
+        source = Path("src/kedro_azureml_pipeline/cli/functions.py").read_text()
+        assert 'click.echo(f"Running with extra parameters' not in source
+
+    def test_the_report_still_names_the_parameters(self, caplog):
+        with caplog.at_level(logging.INFO, logger="kedro_azureml_pipeline.cli.functions"):
+            parse_runtime_params('{"arena_snapshot": "demo"}')
+
+        assert "arena_snapshot" in caplog.records[0].getMessage()
+
+    def test_silent_reports_nothing(self, caplog, capsys):
+        with caplog.at_level(logging.INFO, logger="kedro_azureml_pipeline.cli.functions"):
+            parse_runtime_params('{"a": 1}', silent=True)
+
+        assert capsys.readouterr().out == ""
+        assert caplog.records == []
 
 
 class TestParseExtraEnvParams:

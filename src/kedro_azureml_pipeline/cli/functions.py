@@ -19,7 +19,7 @@ from kedro_azureml_pipeline.utils import CliContext
 if TYPE_CHECKING:
     from kedro_azureml_pipeline.config.models import ScheduleConfig
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def _read_mlflow_experiment_name(mgr: KedroContextManager) -> str | None:
@@ -55,7 +55,7 @@ def parse_runtime_params(params, silent=False):
     params : str
         JSON string of parameters, or falsy value.
     silent : bool
-        Suppress console output when ``True``.
+        Suppress the report when ``True``.
 
     Returns
     -------
@@ -65,7 +65,12 @@ def parse_runtime_params(params, silent=False):
     """
     if params and (parameters := json.loads(params.strip("'"))):
         if not silent:
-            click.echo(f"Running with extra parameters:\n{json.dumps(parameters, indent=4)}")
+            # Logged rather than echoed: this function is shared by the interactive
+            # submit path and by `execute`, which runs a node inside a step
+            # container. On stdout the block carried no timestamp, level or node
+            # identity, could not be levelled down, and was four unattributable
+            # lines per step in the consuming project's merged job log.
+            logger.info("Running with extra parameters:\n%s", json.dumps(parameters, indent=4))
     else:
         parameters = None
     return parameters
