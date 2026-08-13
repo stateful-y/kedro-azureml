@@ -1,6 +1,6 @@
 # Kedro AzureML Pipeline
 
-Kedro plugin with Azure ML Pipelines support
+Orchestrate Kedro pipelines with Azure ML Pipeline
 
 Instructions for AI coding assistants working in this repository.
 
