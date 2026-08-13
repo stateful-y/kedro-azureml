@@ -299,28 +299,43 @@ class ScheduleConfig(BaseModel):
         return self
 
 
-class RetryConfig(BaseModel):
-    """Retry settings for Azure ML pipeline steps.
+class LimitsConfig(BaseModel):
+    """Run-duration limits for Azure ML pipeline steps.
 
-    Maps to ``azure.ai.ml.entities.RetrySettings`` applied on each
-    invoked command component.
+    Maps to ``azure.ai.ml.entities.CommandJobLimits`` applied on each invoked
+    command component. The timeout is a hang guard rather than an expected
+    duration: Azure ML cancels the step once it is reached, releasing the
+    instances the step was holding.
+
+    Retry settings are deliberately absent. ``RetrySettings`` is declared for
+    parallel and sweep jobs only, so on a command step the Azure ML SDK reports
+    it as an unknown field and the service ignores it. Azure ML does not retry
+    command steps, and this plugin emits only command steps.
 
     Parameters
     ----------
-    max_retries : int
-        Maximum number of retry attempts for failed steps.
-    timeout : int or None
-        Per-attempt timeout in seconds, or ``None`` for no limit.
+    timeout : int
+        Maximum run duration in seconds, after which the step is cancelled.
+
+    Examples
+    --------
+    ```yaml
+    jobs:
+      nightly:
+        pipeline:
+          pipeline_name: data_processing
+        limits:
+          timeout: 3600
+    ```
 
     See Also
     --------
-    [JobConfig][kedro_azureml_pipeline.config.JobConfig] : Uses retry settings per job.
+    [JobConfig][kedro_azureml_pipeline.config.JobConfig] : Uses limits per job.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    max_retries: int = Field(ge=1, description="Maximum number of retry attempts for failed steps.")
-    timeout: int | None = Field(default=None, ge=1, description="Per-attempt timeout in seconds, or None for no limit.")
+    timeout: int = Field(ge=1, description="Maximum run duration in seconds, after which the step is cancelled.")
 
 
 class PipelineFilterOptions(BaseModel):
@@ -401,8 +416,8 @@ class JobConfig(BaseModel):
         Inline schedule, named schedule reference, or ``None`` for ad-hoc.
     params : dict of str to Any or None
         Job-level runtime parameters merged into every step. CLI --params take precedence.
-    retry : RetryConfig or None
-        Retry settings applied to every step in this job.
+    limits : LimitsConfig or None
+        Run-duration limits applied to every step in this job.
     description : str or None
         Human-readable job description.
 
@@ -420,8 +435,7 @@ class JobConfig(BaseModel):
         schedule:
           cron:
             expression: "0 2 * * *"
-        retry:
-          max_retries: 3
+        limits:
           timeout: 3600
     ```
 
@@ -429,7 +443,7 @@ class JobConfig(BaseModel):
     --------
     [PipelineFilterOptions][kedro_azureml_pipeline.config.PipelineFilterOptions] : Pipeline node filtering.
     [ScheduleConfig][kedro_azureml_pipeline.config.ScheduleConfig] : Schedule trigger specification.
-    [RetryConfig][kedro_azureml_pipeline.config.RetryConfig] : Retry settings.
+    [LimitsConfig][kedro_azureml_pipeline.config.LimitsConfig] : Run-duration limits.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -447,7 +461,9 @@ class JobConfig(BaseModel):
         default=None,
         description="Job-level runtime parameters merged into every step. CLI --params take precedence.",
     )
-    retry: RetryConfig | None = Field(default=None, description="Retry settings applied to every step in this job.")
+    limits: LimitsConfig | None = Field(
+        default=None, description="Run-duration limits applied to every step in this job."
+    )
     description: str | None = Field(default=None, description="Human-readable job description.")
 
 

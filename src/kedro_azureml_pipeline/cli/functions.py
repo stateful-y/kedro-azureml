@@ -345,7 +345,7 @@ def compile_job_pipelines(
                     filter_options=pipeline_opts,
                     mlflow_run_name=mlflow_run_name,
                     experiment_name=job_experiment_name,
-                    retry_config=job_config.retry,
+                    limits_config=job_config.limits,
                 )
                 az_pipeline = generator.generate()
             except Exception as exc:  # noqa: BLE001
@@ -440,7 +440,7 @@ def _prepare_jobs(
                 filter_options=pipeline_opts,
                 mlflow_run_name=mlflow_run_name,
                 experiment_name=job_experiment_name,
-                retry_config=job_config.retry,
+                limits_config=job_config.limits,
             )
             pipeline_job = generator.generate()
 

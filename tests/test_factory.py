@@ -100,8 +100,15 @@ def test_render_job_accepts_dict_and_jobconfig():
 
 
 def test_render_job_passes_through_non_string_leaves():
-    job = _render_job({"pipeline": {"pipeline_name": "p"}, "retry": {"max_retries": 3, "timeout": 3600}}, {})
-    assert job.retry.max_retries == 3  # int leaves are passed through unchanged
+    job = _render_job({"pipeline": {"pipeline_name": "p"}, "params": {"threshold": 3, "limit": 3600}}, {})
+    assert job.params["threshold"] == 3  # int leaves are passed through unchanged
+    assert job.params["limit"] == 3600
+
+
+def test_render_job_templates_limits():
+    """`limits` survives templating alongside the other job fields."""
+    job = _render_job({"pipeline": {"pipeline_name": "p"}, "limits": {"timeout": 3600}}, {})
+    assert job.limits.timeout == 3600
 
 
 def test_matches_job_type():
