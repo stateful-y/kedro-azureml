@@ -14,7 +14,7 @@ from azure.ai.ml import (
     command,
 )
 from azure.ai.ml.dsl import pipeline as azure_pipeline
-from azure.ai.ml.entities import Environment, Job, RetrySettings
+from azure.ai.ml.entities import CommandJobLimits, Environment, Job
 from azure.ai.ml.entities._builders import Command
 from kedro.io import DataCatalog
 from kedro.pipeline import Pipeline
@@ -23,8 +23,8 @@ from kedro.pipeline.node import Node
 from kedro_azureml_pipeline.config import (
     ClusterConfig,
     KedroAzureMLConfig,
+    LimitsConfig,
     PipelineFilterOptions,
-    RetryConfig,
 )
 from kedro_azureml_pipeline.constants import (
     DISTRIBUTED_CONFIG_FIELD,
@@ -81,8 +81,8 @@ class AzureMLPipelineGenerator:
         MLflow run name override.
     experiment_name : str or None
         Azure ML experiment name (enables MLflow tracking when set).
-    retry_config : RetryConfig or None
-        Retry settings applied to every step in the pipeline.
+    limits_config : LimitsConfig or None
+        Run-duration limits applied to every step in the pipeline.
 
     See Also
     --------
@@ -106,7 +106,7 @@ class AzureMLPipelineGenerator:
         filter_options: PipelineFilterOptions | None = None,
         mlflow_run_name: str | None = None,
         experiment_name: str | None = None,
-        retry_config: RetryConfig | None = None,
+        limits_config: LimitsConfig | None = None,
     ):
         if load_versions is None:
             load_versions = {}
@@ -125,7 +125,7 @@ class AzureMLPipelineGenerator:
         self.filter_options = filter_options
         self.mlflow_run_name = mlflow_run_name
         self.experiment_name = experiment_name
-        self.retry_config = retry_config
+        self.limits_config = limits_config
 
     def generate(self) -> Job:
         """Build and return the Azure ML pipeline ``Job``.
@@ -589,11 +589,8 @@ class AzureMLPipelineGenerator:
                 else:
                     azure_inputs[sanitized_input_name] = node_input
             invoked_components[node.name] = commands[node.name](**azure_inputs)
-            if self.retry_config is not None:
-                invoked_components[node.name].retry_settings = RetrySettings(
-                    max_retries=self.retry_config.max_retries,
-                    timeout=self.retry_config.timeout,
-                )
+            if self.limits_config is not None:
+                invoked_components[node.name].limits = CommandJobLimits(timeout=self.limits_config.timeout)
         return invoked_components
 
     def _prepare_command(self, node, pipeline):

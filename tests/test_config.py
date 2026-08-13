@@ -14,10 +14,10 @@ from kedro_azureml_pipeline.config import (
     ExecutionConfig,
     JobConfig,
     KedroAzureMLConfig,
+    LimitsConfig,
     PipelineFilterOptions,
     RecurrencePatternConfig,
     RecurrenceScheduleConfig,
-    RetryConfig,
     ScheduleConfig,
     WorkspaceConfig,
     WorkspacesConfig,
@@ -174,34 +174,28 @@ class TestPipelineFilterOptions:
         assert opts.to_filter_kwargs() == {"tags": ["etl"]}
 
 
-class TestRetryConfig:
-    """Retry config validation."""
+class TestLimitsConfig:
+    """Run-duration limit validation."""
 
     def test_basic_creation(self):
-        rc = RetryConfig(max_retries=3)
-        assert rc.max_retries == 3
-        assert rc.timeout is None
-
-    def test_with_timeout(self):
-        rc = RetryConfig(max_retries=2, timeout=3600)
-        assert rc.max_retries == 2
-        assert rc.timeout == 3600
-
-    def test_zero_retries_raises(self):
-        with pytest.raises(ValidationError):
-            RetryConfig(max_retries=0)
-
-    def test_negative_retries_raises(self):
-        with pytest.raises(ValidationError):
-            RetryConfig(max_retries=-1)
+        lc = LimitsConfig(timeout=3600)
+        assert lc.timeout == 3600
 
     def test_zero_timeout_raises(self):
         with pytest.raises(ValidationError):
-            RetryConfig(max_retries=1, timeout=0)
+            LimitsConfig(timeout=0)
+
+    def test_negative_timeout_raises(self):
+        with pytest.raises(ValidationError):
+            LimitsConfig(timeout=-1)
+
+    def test_timeout_is_required(self):
+        with pytest.raises(ValidationError):
+            LimitsConfig()
 
     def test_extra_fields_forbidden(self):
         with pytest.raises(ValidationError):
-            RetryConfig(max_retries=1, unknown_field="x")
+            LimitsConfig(timeout=60, max_retries=3)
 
 
 class TestJobConfig:
@@ -212,7 +206,6 @@ class TestJobConfig:
         assert jc.workspace is None
         assert jc.schedule is None
         assert jc.display_name is None
-        assert jc.retry is None
 
     def test_with_inline_schedule(self):
         jc = JobConfig(
@@ -227,14 +220,6 @@ class TestJobConfig:
             schedule="daily_morning",
         )
         assert jc.schedule == "daily_morning"
-
-    def test_with_retry(self):
-        jc = JobConfig(
-            pipeline=PipelineFilterOptions(pipeline_name="pipe"),
-            retry=RetryConfig(max_retries=3, timeout=3600),
-        )
-        assert jc.retry.max_retries == 3
-        assert jc.retry.timeout == 3600
 
     def test_params_default_none(self):
         jc = JobConfig(pipeline=PipelineFilterOptions(pipeline_name="pipe"))
@@ -293,7 +278,40 @@ jobs:
         assert "daily" in cfg.schedules
         assert cfg.jobs["etl"].schedule == "daily"
 
-    def test_yaml_round_trip_with_retry(self):
+    def test_yaml_round_trip_with_limits(self):
+        """`limits` survives a full YAML round trip through the top-level config."""
+        raw = """
+workspace:
+  __default__:
+    subscription_id: "sub"
+    resource_group: "rg"
+    name: "ws"
+compute:
+  __default__:
+    cluster_name: "cpu"
+jobs:
+  inference:
+    pipeline:
+      pipeline_name: model_inference
+    limits:
+      timeout: 3600
+"""
+        cfg = KedroAzureMLConfig.model_validate(yaml.safe_load(raw))
+        assert cfg.jobs["inference"].limits is not None
+        assert cfg.jobs["inference"].limits.timeout == 3600
+
+    def test_limits_default_none(self):
+        jc = JobConfig(pipeline=PipelineFilterOptions(pipeline_name="pipe"))
+        assert jc.limits is None
+
+    def test_yaml_with_retry_is_rejected(self):
+        """`retry` was removed; extra="forbid" must surface it by name, not ignore it.
+
+        Azure ML only honours retry_settings on parallel and sweep jobs, never on the
+        command steps this plugin emits, so the setting was removed rather than left
+        to look effective. A project upgrading with a stale `retry:` block must be
+        told which key to delete.
+        """
         raw = """
 workspace:
   __default__:
@@ -311,10 +329,9 @@ jobs:
       max_retries: 3
       timeout: 3600
 """
-        cfg = KedroAzureMLConfig.model_validate(yaml.safe_load(raw))
-        assert cfg.jobs["inference"].retry is not None
-        assert cfg.jobs["inference"].retry.max_retries == 3
-        assert cfg.jobs["inference"].retry.timeout == 3600
+        with pytest.raises(ValidationError) as excinfo:
+            KedroAzureMLConfig.model_validate(yaml.safe_load(raw))
+        assert "retry" in str(excinfo.value)
 
 
 class TestWorkspaceConfigProperty:
