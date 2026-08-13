@@ -8,14 +8,14 @@ If you use Kedro AzureML Pipeline in work you publish, please cite it.
 
 ## Plain text
 
-Guillaume Tauzin. Kedro AzureML Pipeline. https://github.com/stateful-y/kedro-azureml-pipeline
+Guillaume Tauzin. Kedro AzureML Pipeline: Orchestrate Kedro pipelines with Azure ML Pipeline. https://github.com/stateful-y/kedro-azureml-pipeline
 
 ## BibTeX
 
 ```bibtex
 @software{kedro_azureml_pipeline,
   author  = "Guillaume Tauzin",
-  title   = "{Kedro AzureML Pipeline}",
+  title   = "{Kedro AzureML Pipeline: Orchestrate Kedro pipelines with Azure ML Pipeline}",
   url     = "https://github.com/stateful-y/kedro-azureml-pipeline",
   license = "Apache-2.0"
 }
