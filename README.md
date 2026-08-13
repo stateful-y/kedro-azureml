@@ -121,6 +121,25 @@ We welcome contributions, feedback, and questions:
 
 This project is licensed under the terms of the [Apache-2.0 License](https://github.com/stateful-y/kedro-azureml-pipeline/blob/main/LICENSE).
 
+## How do I cite Kedro AzureML Pipeline?
+
+If you use Kedro AzureML Pipeline in work you publish, please cite it:
+
+Guillaume Tauzin. Kedro AzureML Pipeline. https://github.com/stateful-y/kedro-azureml-pipeline
+
+Or in BibTeX:
+
+```bibtex
+@software{kedro_azureml_pipeline,
+  author  = "Guillaume Tauzin",
+  title   = "{Kedro AzureML Pipeline}",
+  url     = "https://github.com/stateful-y/kedro-azureml-pipeline",
+  license = "Apache-2.0"
+}
+```
+
+Reference managers can read [CITATION.cff](https://github.com/stateful-y/kedro-azureml-pipeline/blob/main/CITATION.cff) directly. To cite a specific version, see the [citation page](https://kedro-azureml-pipeline.readthedocs.io/en/latest/pages/reference/citation/).
+
 ## Acknowledgements
 
 This project is a fork of [kedro-azureml](https://github.com/getindata/kedro-azureml), originally developed by [GetInData](https://github.com/getindata). We are grateful for their work in creating the initial plugin that bridges Kedro and Azure ML Pipelines. We have continued development to add new features, improve documentation, and maintain the project under the `kedro-azureml-pipeline` package name.
