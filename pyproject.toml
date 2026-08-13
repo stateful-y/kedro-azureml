@@ -1,7 +1,7 @@
 [project]
 name = "kedro_azureml_pipeline"
 dynamic = ["version"]
-description = "Kedro plugin with Azure ML Pipelines support"
+description = "Orchestrate Kedro pipelines with Azure ML Pipeline"
 readme = "README.md"
 maintainers = [
     { name = "Guillaume Tauzin", email = "gtauzin@stateful-y.io" }
