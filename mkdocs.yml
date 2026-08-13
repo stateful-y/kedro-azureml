@@ -1,5 +1,5 @@
 site_name: Kedro AzureML Pipeline
-site_description: Kedro plugin with Azure ML Pipelines support
+site_description: Orchestrate Kedro pipelines with Azure ML Pipeline
 site_url: https://kedro-azureml-pipeline.readthedocs.io/
 # The built site is throwaway output, so it goes under `.artifacts/` with the
 # caches and coverage reports instead of dropping a `site/` at the repo root.
