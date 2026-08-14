@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -89,6 +90,16 @@ class TestPipelineGeneration:
                 )
 
 
+#: The suffix-execution tests need a POSIX shell. On Windows runners ``bash``
+#: resolves to the WSL stub, which exits 1 for every invocation; the generated
+#: command only ever runs in Azure ML Linux containers, so there is nothing to
+#: exercise there.
+requires_posix_shell = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="the generated command runs in Azure ML Linux containers; Windows has no POSIX shell to run it with",
+)
+
+
 class TestExitClassification:
     """A step that dies of a signal names it in stderr instead of a bare exit code.
 
@@ -113,6 +124,7 @@ class TestExitClassification:
         for job in az_pipeline.jobs.values():
             assert job.command.endswith(EXIT_CLASSIFICATION_SUFFIX)
 
+    @requires_posix_shell
     def test_a_segfault_is_named_in_stderr(self):
         proc = subprocess.run(
             ["bash", "-c", "sh -c 'kill -SEGV $$'" + EXIT_CLASSIFICATION_SUFFIX],
@@ -123,6 +135,7 @@ class TestExitClassification:
         assert proc.returncode == 128 + 11
         assert "killed by signal 11 (SIGSEGV)" in proc.stderr
 
+    @requires_posix_shell
     def test_a_clean_exit_adds_nothing(self):
         proc = subprocess.run(
             ["bash", "-c", "true" + EXIT_CLASSIFICATION_SUFFIX],
@@ -133,6 +146,7 @@ class TestExitClassification:
         assert proc.returncode == 0
         assert proc.stderr == ""
 
+    @requires_posix_shell
     def test_an_ordinary_failure_keeps_its_code_unclassified(self):
         """A Python exception exits with a small code and its own traceback; the
         suffix must neither relabel it nor swallow the code."""
