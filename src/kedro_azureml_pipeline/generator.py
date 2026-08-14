@@ -40,6 +40,18 @@ from kedro_azureml_pipeline.distributed.config import Framework
 
 logger = logging.getLogger(__name__)
 
+#: Appended to every step command. Azure ML surfaces a signal death as a bare
+#: nonzero exit, so the one fact that matters for diagnosis, which signal, never
+#: reaches the failure page. It has to be classified in the shell: nothing inside
+#: the Python process survives a SIGSEGV or SIGKILL to report it.
+EXIT_CLASSIFICATION_SUFFIX = (
+    '; rc=$?; if [ "$rc" -gt 128 ]; then '
+    'echo "kedro azureml execute: killed by signal $((rc-128)) (SIG$(kill -l $((rc-128)))). '
+    "A signal death is a native crash or an external kill (out-of-memory, preemption); "
+    'the Python-level traceback, if any, is in user_logs/std_log_process_*.txt" >&2; '
+    "fi; exit $rc"
+)
+
 
 class ConfigException(BaseException):
     """Raised when pipeline generator configuration is invalid.
@@ -606,7 +618,9 @@ class AzureMLPipelineGenerator:
         Returns
         -------
         str
-            Full shell command for ``kedro azureml execute``.
+            Full shell command for ``kedro azureml execute``, ending with the
+            exit-classification suffix that names the signal when the process
+            dies of one.
         """
         input_data_paths = (
             [
@@ -631,4 +645,4 @@ class AzureMLPipelineGenerator:
             + f"kedro azureml -e {self.kedro_environment} execute --pipeline={self.pipeline_name} --node={node.name} "  # noqa
             + " ".join(input_data_paths + output_data_paths)
             + (f" --params='{self.params}'" if self.params else "")
-        ).strip()
+        ).strip() + EXIT_CLASSIFICATION_SUFFIX
