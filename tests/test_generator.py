@@ -1,3 +1,4 @@
+import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,7 +13,11 @@ from kedro_azureml_pipeline.constants import (
     KEDRO_AZUREML_MLFLOW_NODE_NAME,
     KEDRO_AZUREML_MLFLOW_RUN_NAME,
 )
-from kedro_azureml_pipeline.generator import AzureMLPipelineGenerator, ConfigException
+from kedro_azureml_pipeline.generator import (
+    EXIT_CLASSIFICATION_SUFFIX,
+    AzureMLPipelineGenerator,
+    ConfigException,
+)
 
 
 class TestPipelineGeneration:
@@ -82,6 +87,63 @@ class TestPipelineGeneration:
                 assert az_pipeline.jobs[node.name].component.is_deterministic == ("deterministic" in node.tags), (
                     "is_deterministic property does not match node tag"
                 )
+
+
+class TestExitClassification:
+    """A step that dies of a signal names it in stderr instead of a bare exit code.
+
+    Azure ML reports a signal death as a nonzero exit with no signal name, so the
+    failure page cannot distinguish a native crash from an ordinary exception.
+    The classification runs in the shell because nothing inside the Python
+    process survives a SIGSEGV or SIGKILL to report it.
+    """
+
+    def test_every_command_carries_the_suffix(self, dummy_pipeline, dummy_plugin_config, multi_catalog):
+        with patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline):
+            generator = AzureMLPipelineGenerator(
+                "dummy_pipeline",
+                "unit_test_env",
+                dummy_plugin_config,
+                {},
+                catalog=multi_catalog,
+                aml_env="unit_test/aml_env@latest",
+            )
+            az_pipeline = generator.generate()
+
+        for job in az_pipeline.jobs.values():
+            assert job.command.endswith(EXIT_CLASSIFICATION_SUFFIX)
+
+    def test_a_segfault_is_named_in_stderr(self):
+        proc = subprocess.run(
+            ["bash", "-c", "sh -c 'kill -SEGV $$'" + EXIT_CLASSIFICATION_SUFFIX],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 128 + 11
+        assert "killed by signal 11 (SIGSEGV)" in proc.stderr
+
+    def test_a_clean_exit_adds_nothing(self):
+        proc = subprocess.run(
+            ["bash", "-c", "true" + EXIT_CLASSIFICATION_SUFFIX],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0
+        assert proc.stderr == ""
+
+    def test_an_ordinary_failure_keeps_its_code_unclassified(self):
+        """A Python exception exits with a small code and its own traceback; the
+        suffix must neither relabel it nor swallow the code."""
+        proc = subprocess.run(
+            ["bash", "-c", "sh -c 'exit 3'" + EXIT_CLASSIFICATION_SUFFIX],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 3
+        assert proc.stderr == ""
 
 
 class TestComputeResources:
