@@ -92,8 +92,29 @@ class ClusterConfig(BaseModel):
 
     Parameters
     ----------
-    cluster_name : str
-        Name of the Azure ML compute cluster.
+    cluster_name : str or None
+        Name of the Azure ML compute cluster. Required on the
+        ``__default__`` entry. A tag entry that omits it inherits the
+        ``__default__`` cluster during resolution.
+    instance_type : str or None
+        Name of the Azure ML instance type to run steps under. Only
+        meaningful when ``cluster_name`` is an attached Kubernetes
+        compute target, where instance types are ``InstanceType``
+        custom resources defined on the cluster. When omitted, Azure ML
+        runs steps under ``defaultinstancetype``, whose stock definition
+        limits each step to 2 CPU cores, 2 GiB of memory, and no GPU.
+        AmlCompute clusters ignore this field.
+
+    Examples
+    --------
+    ```yaml
+    compute:
+      __default__:
+        cluster_name: "k8s-compute"
+      gpu-nodes:
+        cluster_name: "k8s-compute"
+        instance_type: "gpu-large"
+    ```
 
     See Also
     --------
@@ -102,7 +123,14 @@ class ClusterConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    cluster_name: str = Field(description="Name of the Azure ML compute cluster.")
+    cluster_name: str | None = Field(
+        default=None,
+        description="Name of the Azure ML compute cluster. Required on '__default__'; tag entries inherit it when omitted.",
+    )
+    instance_type: str | None = Field(
+        default=None,
+        description="Azure ML instance type for Kubernetes compute targets. None means the cluster's defaultinstancetype.",
+    )
 
 
 class ComputeConfig(RootModel[dict[str, ClusterConfig]]):
@@ -129,10 +157,13 @@ class ComputeConfig(RootModel[dict[str, ClusterConfig]]):
         Raises
         ------
         ValueError
-            If the ``__default__`` key is missing.
+            If the ``__default__`` key is missing, or if it does not
+            set ``cluster_name``.
         """
         if "__default__" not in self.root:
             raise ValueError("ComputeConfig must contain a '__default__' key")
+        if self.root["__default__"].cluster_name is None:
+            raise ValueError("The '__default__' compute entry must set cluster_name")
         return self
 
     def resolve(self, tag: str | None = None) -> ClusterConfig:
@@ -545,6 +576,8 @@ compute:
     cluster_name: "<cluster_name>"
   # gpu-nodes:
   #   cluster_name: "<gpu_cluster_name>"
+  #   # Kubernetes compute only: instance type to run steps under
+  #   # instance_type: "<instance_type_name>"
 
 execution:
   # Azure ML Environment to use during pipeline execution

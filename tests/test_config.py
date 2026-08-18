@@ -65,12 +65,32 @@ class TestWorkspacesConfig:
             ws.resolve("missing")
 
 
+class TestClusterConfig:
+    """Single compute entry fields."""
+
+    def test_instance_type_defaults_to_none(self):
+        cluster = ClusterConfig(cluster_name="cpu")
+        assert cluster.instance_type is None
+
+    def test_instance_type_loads(self):
+        cluster = ClusterConfig(cluster_name="k8s-compute", instance_type="gpu-large")
+        assert cluster.instance_type == "gpu-large"
+
+    def test_unknown_key_is_rejected_by_name(self):
+        with pytest.raises(ValidationError, match="node_selector"):
+            ClusterConfig(cluster_name="cpu", node_selector="gpu=true")
+
+
 class TestComputeConfig:
     """Keyed compute lookup with ``__default__`` enforcement."""
 
     def test_requires_default_key(self):
         with pytest.raises(ValueError, match="__default__"):
             ComputeConfig(root={"gpu": ClusterConfig(cluster_name="gpu-cluster")})
+
+    def test_default_entry_requires_cluster_name(self):
+        with pytest.raises(ValueError, match="cluster_name"):
+            ComputeConfig(root={"__default__": ClusterConfig(instance_type="gpu-large")})
 
     def test_resolve_returns_default(self):
         cc = ComputeConfig(root={"__default__": ClusterConfig(cluster_name="cpu")})
@@ -90,6 +110,28 @@ class TestComputeConfig:
     def test_resolve_unknown_tag_returns_default(self):
         cc = ComputeConfig(root={"__default__": ClusterConfig(cluster_name="cpu")})
         assert cc.resolve("nonexistent").cluster_name == "cpu"
+
+    def test_resolve_instance_type_only_inherits_cluster_name(self):
+        cc = ComputeConfig(
+            root={
+                "__default__": ClusterConfig(cluster_name="k8s-compute"),
+                "gpu": ClusterConfig(instance_type="gpu-large"),
+            }
+        )
+        resolved = cc.resolve("gpu")
+        assert resolved.cluster_name == "k8s-compute"
+        assert resolved.instance_type == "gpu-large"
+
+    def test_resolve_cluster_name_only_inherits_instance_type(self):
+        cc = ComputeConfig(
+            root={
+                "__default__": ClusterConfig(cluster_name="k8s-compute", instance_type="cpu-small"),
+                "other": ClusterConfig(cluster_name="other-compute"),
+            }
+        )
+        resolved = cc.resolve("other")
+        assert resolved.cluster_name == "other-compute"
+        assert resolved.instance_type == "cpu-small"
 
 
 class TestExecutionConfig:

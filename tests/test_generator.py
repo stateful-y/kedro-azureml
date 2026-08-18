@@ -188,6 +188,60 @@ class TestComputeResources:
                         for tag in node.tags
                     ), "compute settings don't match"
 
+    def test_instance_type_reaches_every_step_and_the_payload(
+        self, dummy_pipeline_compute_tag, dummy_plugin_config, multi_catalog
+    ):
+        """A configured instance type reaches each routed step's serialized payload.
+
+        Asserting a Python attribute alone would pass whether or not the SDK
+        recognises the field, so this asserts the value in the REST payload and
+        that validation reports no ``Unknown field`` warning for it.
+        """
+        dummy_plugin_config.compute.root["__default__"].instance_type = "cpu-small"
+        dummy_plugin_config.compute.root["compute-2"] = ClusterConfig(instance_type="gpu-large")
+        with patch.object(
+            AzureMLPipelineGenerator,
+            "get_kedro_pipeline",
+            return_value=dummy_pipeline_compute_tag,
+        ):
+            generator = AzureMLPipelineGenerator(
+                "dummy_pipeline_compute_tag",
+                "unit_test_env",
+                dummy_plugin_config,
+                {},
+                catalog=multi_catalog,
+                aml_env="unit_test/aml_env@latest",
+            )
+            az_pipeline = generator.generate()
+
+            az_pipeline.settings.default_compute = "cpu"
+            validation = az_pipeline._validate()
+            warnings = [str(w) for w in (validation._warnings or [])]
+            assert not any("instance_type" in w for w in warnings), warnings
+
+            payload = az_pipeline._to_rest_object().as_dict()
+            jobs = payload["properties"]["jobs"]
+            assert jobs["node1"]["resources"]["instance_type"] == "gpu-large", jobs["node1"]
+            for name in ("node2", "node3"):
+                assert jobs[name]["resources"]["instance_type"] == "cpu-small", jobs[name]
+
+    def test_no_instance_type_by_default(self, dummy_plugin_config, dummy_pipeline, multi_catalog):
+        """Without instance_type, no step payload carries one (current-behavior guard)."""
+        with patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline):
+            generator = AzureMLPipelineGenerator(
+                "test_no_instance_type",
+                "local",
+                dummy_plugin_config,
+                {},
+                catalog=multi_catalog,
+                aml_env="test@latest",
+            )
+            az_pipeline = generator.generate()
+
+            payload = az_pipeline._to_rest_object().as_dict()
+            for job_node in payload["properties"]["jobs"].values():
+                assert "instance_type" not in (job_node.get("resources") or {}), job_node
+
     def test_multiple_compute_tags_raises(self, dummy_plugin_config, dummy_pipeline, multi_catalog):
         """A node with more than one compute tag causes a ConfigException."""
         pipeline_name = "unit_test_pipeline"

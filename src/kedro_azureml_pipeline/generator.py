@@ -465,6 +465,8 @@ class AzureMLPipelineGenerator:
         command_kwargs = {}
         command_kwargs.update(self._get_distributed_azure_command_kwargs(node))
 
+        target_resource = self.get_target_resource_from_node_tags(node)
+
         mlflow_env_vars = {}
         if self.experiment_name is not None:
             mlflow_env_vars[KEDRO_AZUREML_MLFLOW_ENABLED] = "1"
@@ -478,7 +480,8 @@ class AzureMLPipelineGenerator:
             name=self._sanitize_azure_name(node.name),
             display_name=node.name,
             command=self._prepare_command(node, pipeline),
-            compute=self.get_target_resource_from_node_tags(node).cluster_name,
+            compute=target_resource.cluster_name,
+            instance_type=target_resource.instance_type,
             environment_variables={
                 "KEDRO_ENV": self.kedro_environment,
                 **mlflow_env_vars,

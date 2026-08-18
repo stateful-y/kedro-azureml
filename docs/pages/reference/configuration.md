@@ -58,23 +58,34 @@ Each compute entry (`ClusterConfig`) has the following fields:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `cluster_name` | string | yes | Name of the Azure ML compute cluster |
+| `cluster_name` | string | on `__default__` | Name of the Azure ML compute cluster. Tag entries inherit it from `__default__` when omitted |
+| `instance_type` | string | no | Azure ML instance type to run steps under. Kubernetes compute targets only |
 
 Jobs reference a compute entry by name via their `compute` field.
 
+### Kubernetes compute targets
+
+When `cluster_name` points at an attached Kubernetes compute target (AKS or Azure Arc), `instance_type` selects the `InstanceType` custom resource the step runs under. Instance types are defined on the cluster by its administrator; the plugin passes the name through without validating it.
+
+When `instance_type` is omitted, Azure ML runs the step under `defaultinstancetype`, whose stock definition limits each step to 2 CPU cores, 2 GiB of memory, and no GPU. Set an instance type for any workload that needs more than that ceiling, and for every GPU workload.
+
+The field has no effect on AmlCompute clusters; Azure ML ignores it there.
+
 ### Tag-based routing
 
-Kedro node tags can route nodes to specific compute clusters. When a node has a tag that matches a named compute entry, that entry is merged with `__default__`:
+Kedro node tags can route nodes to specific compute clusters. When a node has a tag that matches a named compute entry, that entry is merged with `__default__` field by field:
 
 ```yaml
 compute:
   __default__:
-    cluster_name: "cpu-cluster"
+    cluster_name: "k8s-compute"
   gpu:
-    cluster_name: "gpu-cluster"
+    instance_type: "gpu-large"
+  cpu-heavy:
+    cluster_name: "other-compute"
 ```
 
-A node tagged `gpu` in your Kedro pipeline will run on `gpu-cluster`. Nodes without a matching tag fall back to `__default__`. Fields from the tagged entry override `__default__` fields.
+A node tagged `gpu` in your Kedro pipeline will run on `k8s-compute` under the `gpu-large` instance type. Nodes without a matching tag fall back to `__default__`. Fields from the tagged entry override `__default__` fields, and omitted fields are inherited: the `cpu-heavy` entry above inherits any `instance_type` set on `__default__`, so set it explicitly when the target cluster defines different instance types.
 
 ---
 
