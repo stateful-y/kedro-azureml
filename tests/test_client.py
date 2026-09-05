@@ -283,8 +283,11 @@ class TestRegisterCodeSnapshot:
         assert code_id == "/codes/pkg-snapshot/versions/1"
         ml_client._code.create_or_update.assert_called_once()
         code = ml_client._code.create_or_update.call_args.args[0]
+        from kedro_azureml_pipeline.snapshot import snapshot_content_hash
+
         assert code.name == "pkg-snapshot"
-        assert code.version is None
+        assert code.version == snapshot_content_hash(tmp_path)
+        assert len(code.version) == 64
         assert Path(code.path).resolve() == tmp_path.resolve()
 
 

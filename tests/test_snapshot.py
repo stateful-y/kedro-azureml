@@ -66,7 +66,7 @@ class TestSelectSnapshotFiles:
             return real_import(name, *args, **kwargs)
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
-        with pytest.raises(ImportError, match="azure-ai-ml .* snapshot selection helpers"):
+        with pytest.raises(ImportError, match="azure-ai-ml .* snapshot helpers"):
             select_snapshot_files(tmp_path)
 
 
@@ -98,3 +98,19 @@ class TestStageCodeSnapshot:
         with pytest.raises(RuntimeError, match="boom"), stage_code_snapshot(project_tree) as staged:
             raise RuntimeError("boom")
         assert not staged.exists()
+
+
+class TestSnapshotContentHash:
+    """The version of the registered asset is the SDK's own content hash."""
+
+    def test_matches_the_sdk_hash_and_tracks_content(self, project_tree):
+        from azure.ai.ml._utils._asset_utils import get_content_hash
+
+        from kedro_azureml_pipeline.snapshot import snapshot_content_hash
+
+        with stage_code_snapshot(project_tree) as staged:
+            first = snapshot_content_hash(staged)
+            assert first == get_content_hash(staged)
+            assert len(first) == 64
+            (staged / "src" / "pkg" / "nodes.py").write_text("x = 2\n")
+            assert snapshot_content_hash(staged) != first

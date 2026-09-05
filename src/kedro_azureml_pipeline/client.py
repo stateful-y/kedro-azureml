@@ -171,8 +171,10 @@ def register_code_snapshot(ml_client: MLClient, staged_dir: str | Path, name: st
 
     The SDK looks the directory's content hash up before uploading, so an
     unchanged snapshot resolves to the asset it already registered and
-    uploads nothing. The version is left to the workspace, which increments
-    it per new content under *name*.
+    uploads nothing. The version is that same content hash: the service
+    assigns no version to code assets on its own (a versionless create fails
+    in the SDK's serializer), and a content-derived version makes the same
+    snapshot the same asset on every machine.
 
     Parameters
     ----------
@@ -192,7 +194,10 @@ def register_code_snapshot(ml_client: MLClient, staged_dir: str | Path, name: st
     --------
     [stage_code_snapshot][kedro_azureml_pipeline.snapshot.stage_code_snapshot] : Produces the directory registered here.
     """
-    registered = _code_operations(ml_client).create_or_update(_code_entity()(path=str(staged_dir), name=name))
+    from kedro_azureml_pipeline.snapshot import snapshot_content_hash
+
+    code = _code_entity()(path=str(staged_dir), name=name, version=snapshot_content_hash(staged_dir))
+    registered = _code_operations(ml_client).create_or_update(code)
     logger.info("Registered code snapshot %s:%s", registered.name, registered.version)
     return str(registered.id)
 
