@@ -12,6 +12,7 @@ from kedro_azureml_pipeline.cli.functions import (
     _read_mlflow_experiment_name,
     default_job_callback,
     dynamic_import_job_schedule_func_from_str,
+    parse_display_name_overrides,
     parse_extra_env_params,
     parse_runtime_params,
     verify_configuration_directory_for_azure,
@@ -277,3 +278,28 @@ class TestMergeJobParams:
         job.params = {}
         result = _merge_job_params("", job)
         assert result == ""
+
+
+class TestParseDisplayNameOverrides:
+    """JOB=NAME display name overrides, checked against the selected jobs."""
+
+    def test_valid_entries(self):
+        assert parse_display_name_overrides(["a=x", "b=y"], ["a", "b"]) == {"a": "x", "b": "y"}
+
+    def test_name_may_contain_equals(self):
+        assert parse_display_name_overrides(["a=x=y"], ["a"]) == {"a": "x=y"}
+
+    def test_empty_list(self):
+        assert parse_display_name_overrides([], ["a"]) == {}
+
+    def test_missing_equals_is_a_usage_error(self):
+        with pytest.raises(click.UsageError, match="JOB=NAME"):
+            parse_display_name_overrides(["a-custom"], ["a"])
+
+    def test_empty_name_is_a_usage_error(self):
+        with pytest.raises(click.UsageError, match="JOB=NAME"):
+            parse_display_name_overrides(["a="], ["a"])
+
+    def test_unselected_job_is_a_usage_error(self):
+        with pytest.raises(click.UsageError, match="not among the selected"):
+            parse_display_name_overrides(["b=x"], ["a"])

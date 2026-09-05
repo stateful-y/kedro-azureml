@@ -350,3 +350,84 @@ class TestSnapshotOnSchedule:
         assert "[DRY RUN]" in result.output
         submit_env.staging.assert_not_called()
         submit_env.ml_client_cls.assert_not_called()
+
+
+class TestDisplayNameOverrides:
+    """``--display-name JOB=NAME`` renames one job of a batch, for the studio and for MLflow."""
+
+    @staticmethod
+    def _submitted(ml_client) -> dict[str, object]:
+        """Map each submitted pipeline job's display name to the job object."""
+        return {call.args[0].display_name: call.args[0] for call in ml_client.jobs.create_or_update.call_args_list}
+
+    def test_an_override_renames_one_job_and_leaves_the_rest(self, submit_env):
+        submit_env.config.jobs = _jobs(["a", "b"], experiment_name="exp")
+
+        result = CliRunner().invoke(cli.run, ["-j", "a", "-j", "b", "--display-name", "a=a-custom"], obj=submit_env.ctx)
+
+        assert result.exit_code == 0, result.output
+        submitted = self._submitted(submit_env.ml_client)
+        assert set(submitted) == {"a-custom", "b"}
+        # The override reaches the generator's run name, so the MLflow root run
+        # carries it too; the untouched job keeps its configured name.
+        for name, job in submitted.items():
+            for step in job.jobs.values():
+                assert step.environment_variables["KEDRO_AZUREML_MLFLOW_RUN_NAME"] == name
+
+    def test_several_overrides_in_one_invocation(self, submit_env):
+        submit_env.config.jobs = _jobs(["a", "b"])
+
+        result = CliRunner().invoke(
+            cli.run, ["-j", "a", "-j", "b", "--display-name", "a=x", "--display-name", "b=y=z"], obj=submit_env.ctx
+        )
+
+        assert result.exit_code == 0, result.output
+        # Split on the first "=" only: a name may itself contain "=".
+        assert set(self._submitted(submit_env.ml_client)) == {"x", "y=z"}
+
+    def test_dry_run_prints_both_names_and_submits_nothing(self, submit_env):
+        submit_env.config.jobs = _jobs(["a"])
+
+        result = CliRunner().invoke(
+            cli.run, ["-j", "a", "--display-name", "a=a-custom", "--dry-run"], obj=submit_env.ctx
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "Would run job 'a' immediately as 'a-custom'" in result.output
+        submit_env.ml_client.jobs.create_or_update.assert_not_called()
+
+    def test_dry_run_without_override_shows_the_configured_name(self, submit_env):
+        submit_env.config.jobs = _jobs(["a"])
+
+        result = CliRunner().invoke(cli.run, ["-j", "a", "--dry-run"], obj=submit_env.ctx)
+
+        assert result.exit_code == 0, result.output
+        assert "Would run job 'a' immediately as 'a'" in result.output
+
+    def test_an_unselected_job_is_a_usage_error_before_any_client(self, submit_env):
+        submit_env.config.jobs = _jobs(["a", "b"])
+
+        result = CliRunner().invoke(cli.run, ["-j", "a", "--display-name", "b=x"], obj=submit_env.ctx)
+
+        assert result.exit_code == 2, result.output
+        assert "'b'" in result.output
+        submit_env.credential_cls.assert_not_called()
+        submit_env.ml_client_cls.assert_not_called()
+        assert submit_env.staging.call_count == 0
+
+    def test_a_malformed_override_is_a_usage_error(self, submit_env):
+        submit_env.config.jobs = _jobs(["a"])
+
+        result = CliRunner().invoke(cli.run, ["-j", "a", "--display-name", "a-custom"], obj=submit_env.ctx)
+
+        assert result.exit_code == 2, result.output
+        assert "JOB=NAME" in result.output
+        submit_env.ml_client_cls.assert_not_called()
+
+    def test_schedule_has_no_such_option(self, submit_env):
+        submit_env.config.jobs = _jobs(["a"], schedule=ScheduleConfig(cron=CronScheduleConfig(expression="0 0 * * *")))
+
+        result = CliRunner().invoke(cli.schedule, ["-j", "a", "--display-name", "a=x"], obj=submit_env.ctx)
+
+        assert result.exit_code == 2, result.output
+        assert "No such option" in result.output

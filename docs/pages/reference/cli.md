@@ -60,6 +60,7 @@ Submits named job(s) to Azure ML managed compute immediately, ignoring any confi
 | `--load-versions KEY:VERSION` | Pin a dataset to a specific Kedro-versioned version. Repeatable. |
 | `--on-job-scheduled MODULE:FUNC` | Callback invoked after each job is submitted (e.g. `mymodule:notify`) |
 | `--concurrent` | Submit the jobs from a small worker pool and attempt every one of them. For jobs that do not depend on each other; see below. |
+| `--display-name JOB=NAME` | Submit the selected job `JOB` under display name `NAME` instead of its configured `display_name`. Repeatable, one entry per job; see below. |
 
 In the code flow (`execution.code_directory` set), one invocation stages the code snapshot once and registers it as one code asset per workspace before any job is generated; every step references that asset. `kedro azureml schedule` does the same. See the [`execution` configuration](configuration.md#execution) for details.
 
@@ -82,6 +83,12 @@ The command exits non-zero if any job failed **or** was skipped.
 When the jobs in a batch do not depend on each other (for example one backtest per model against the same data), pass `--concurrent`. The jobs are then submitted from a worker pool of up to `CONCURRENT_SUBMIT_WORKERS` threads (a constant in `kedro_azureml_pipeline.constants`, 4 by default, never more than the number of jobs), every job is attempted whatever the others do, and the summary reports succeeded and failed jobs with none skipped. The exit status follows the same rule as the serial mode: non-zero if any job failed.
 
 `--concurrent` disables the fail-fast ordering, so do not use it for chains. It cannot be combined with `--wait-for-completion`: streaming several runs' logs into one terminal is not useful, and the command refuses the pair with a usage error. One credential, and one client per workspace, serve the whole batch in both modes.
+
+### Per-job display names
+
+A job's `display_name` in `azureml.yml` is one template per job, resolved once per invocation. When a caller needs distinct names for jobs submitted together (for example an attempt number computed per job before submit), pass `--display-name JOB=NAME` once per job. The override replaces both the Azure ML pipeline job's display name and the MLflow root run name for that job; jobs without an override keep their configured name. The value is split on the first `=`, so `NAME` may contain `=`.
+
+Every `JOB` must be among the `-j` jobs of the same invocation; an unknown job or an entry without `=` is a usage error, raised before any job is prepared or any code is staged. `--dry-run` prints each job's display name next to its job name, so a computed override can be checked without submitting. The `schedule` and `compile` commands do not take this option.
 
 ---
 
