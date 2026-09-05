@@ -59,6 +59,9 @@ Submits named job(s) to Azure ML managed compute immediately, ignoring any confi
 | `--env-var KEY=VALUE` | Inject an environment variable into pipeline steps. Repeatable. |
 | `--load-versions KEY:VERSION` | Pin a dataset to a specific Kedro-versioned version. Repeatable. |
 | `--on-job-scheduled MODULE:FUNC` | Callback invoked after each job is submitted (e.g. `mymodule:notify`) |
+| `--concurrent` | Submit the jobs from a small worker pool and attempt every one of them. For jobs that do not depend on each other; see below. |
+
+In the code flow (`execution.code_directory` set), one invocation stages the code snapshot once and registers it as one code asset per workspace before any job is generated; every step references that asset. See the [`execution` configuration](configuration.md#execution) for details.
 
 ### Batch submission is fail-fast
 
@@ -72,7 +75,13 @@ Aborting batch: 'training' failed; skipping 1 remaining job(s): inference
 Run summary: 1 succeeded, 1 failed, 1 skipped (out of 3 selected)
 ```
 
-The command exits non-zero if any job failed **or** was skipped. To submit jobs independently so that one failure does not hold back the others, invoke `run` once per job instead of passing multiple `-j` names.
+The command exits non-zero if any job failed **or** was skipped.
+
+### Concurrent submission for independent jobs
+
+When the jobs in a batch do not depend on each other (for example one backtest per model against the same data), pass `--concurrent`. The jobs are then submitted from a worker pool of `CONCURRENT_SUBMIT_WORKERS` threads (a constant in `kedro_azureml_pipeline.constants`, 4 by default), every job is attempted whatever the others do, and the summary reports succeeded and failed jobs with none skipped. The exit status follows the same rule as the serial mode: non-zero if any job failed.
+
+`--concurrent` disables the fail-fast ordering, so do not use it for chains. It cannot be combined with `--wait-for-completion`: streaming several runs' logs into one terminal is not useful, and the command refuses the pair with a usage error. One credential and one client serve the whole batch in both modes.
 
 ---
 

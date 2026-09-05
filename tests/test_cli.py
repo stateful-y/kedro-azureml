@@ -448,8 +448,8 @@ class TestRun:
             tmp_path,
         )
         assert result.exit_code == 0, result.output
-        ml_client_patched.from_config.assert_called_once()
-        ml_client = ml_client_patched.from_config()
+        ml_client_patched.assert_called_once()
+        ml_client = ml_client_patched.return_value
         ml_client.jobs.create_or_update.assert_called_once()
         ml_client.compute.get.assert_called_once()
         default_credentials.assert_called_once()
@@ -472,7 +472,7 @@ class TestRun:
             aml_env="unit_test_aml_env@latest",
         )
         assert result.exit_code == 0, result.output
-        ml_client_patched.from_config().jobs.create_or_update.assert_called_once()
+        ml_client_patched.return_value.jobs.create_or_update.assert_called_once()
 
     @pytest.mark.parametrize(
         "use_default_credentials",
@@ -563,7 +563,7 @@ class TestRun:
             extra_env=extra_env,
         )
         assert result.exit_code == 0, result.output
-        ml_client = ml_client_patched.from_config()
+        ml_client = ml_client_patched.return_value
         created_pipeline = ml_client.jobs.create_or_update.call_args[0][0]
         populated_env_vars = list(created_pipeline.jobs.values())[0].environment_variables
         for key in list(populated_env_vars.keys()):
@@ -763,7 +763,7 @@ class TestRun:
                 return_value=dummy_pipeline,
             ),
         ):
-            ml_client = ml_client_patched.from_config()
+            ml_client = ml_client_patched.return_value
             ml_client.jobs.create_or_update.side_effect = ValueError("test failure")
 
             runner = CliRunner()
@@ -806,7 +806,7 @@ class TestRun:
             patch("kedro_azureml_pipeline.client.MLClient") as ml_client_patched,
             patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
         ):
-            ml_client = ml_client_patched.from_config()
+            ml_client = ml_client_patched.return_value
             ml_client.jobs.stream.side_effect = ValueError()
 
             runner = CliRunner()
@@ -905,7 +905,7 @@ class TestRun:
             patch.object(KedroContextManager, "__exit__", return_value=False),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
         ):
-            ml_client = ml_client_patched.from_config()
+            ml_client = ml_client_patched.return_value
             ml_client.jobs.create_or_update.side_effect = RuntimeError("connection lost")
 
             runner = CliRunner()
@@ -944,6 +944,8 @@ class TestRun:
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro_azureml_pipeline.client.MLClient"),
+            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
             patch.object(AzureMLPipelinesClient, "run", return_value=False),
         ):
@@ -981,6 +983,8 @@ class TestRun:
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro_azureml_pipeline.client.MLClient"),
+            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
             patch.object(AzureMLPipelinesClient, "run", return_value=False) as run_patched,
         ):
@@ -1022,6 +1026,8 @@ class TestRun:
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro_azureml_pipeline.client.MLClient"),
+            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
             # job_a succeeds, job_b fails; job_c must never be submitted.
             patch.object(AzureMLPipelinesClient, "run", side_effect=[True, False]) as run_patched,
@@ -1062,6 +1068,8 @@ class TestRun:
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro_azureml_pipeline.client.MLClient"),
+            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
             # job_a succeeds, job_b (last) fails: nothing left to skip.
             patch.object(AzureMLPipelinesClient, "run", side_effect=[True, False]) as run_patched,
@@ -1108,7 +1116,7 @@ class TestRun:
             patch.object(KedroContextManager, "__exit__", return_value=False),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
         ):
-            ml_client = ml_client_patched.from_config()
+            ml_client = ml_client_patched.return_value
             ml_client.compute.get.return_value = MagicMock(
                 name="cpu-cluster", size="Standard_DS3_v2", min_instances=0, max_instances=4
             )
@@ -1153,6 +1161,8 @@ class TestRun:
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro_azureml_pipeline.client.MLClient"),
+            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
         ):
             result = run_jobs(

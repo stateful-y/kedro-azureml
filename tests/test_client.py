@@ -237,3 +237,71 @@ class TestGetAzureMLCredentials:
             get_azureml_credentials()
 
             mock_default.assert_called_once_with(exclude_managed_identity_credential=False)
+
+
+class TestBatchClients:
+    """One credential for the batch, one client per workspace."""
+
+    def test_one_credential_and_one_client_per_workspace(self, workspace_config):
+        from kedro_azureml_pipeline.client import BatchClients
+
+        other = WorkspaceConfig(subscription_id="sub-1", resource_group="rg-1", name="ws-2")
+        with (
+            patch("kedro_azureml_pipeline.client.get_azureml_credentials") as mock_creds,
+            patch("kedro_azureml_pipeline.client.MLClient", side_effect=[MagicMock(), MagicMock()]) as ml_client_cls,
+        ):
+            clients = BatchClients()
+            first = clients.get(workspace_config)
+            again = clients.get(workspace_config)
+            second = clients.get(other)
+
+        assert first is again
+        assert first is not second
+        assert mock_creds.call_count == 1
+        assert ml_client_cls.call_count == 2
+        assert ml_client_cls.call_args_list[0].kwargs == {
+            "subscription_id": "sub-1",
+            "resource_group_name": "rg-1",
+            "workspace_name": "ws-1",
+        }
+
+
+class TestRegisterCodeSnapshot:
+    """The staged directory becomes one named code asset."""
+
+    def test_registers_once_and_returns_the_id(self, tmp_path):
+        from pathlib import Path
+
+        from kedro_azureml_pipeline.client import register_code_snapshot
+
+        (tmp_path / "a.py").write_text("x = 1\n")
+        ml_client = MagicMock()
+        ml_client._code.create_or_update.return_value = MagicMock(id="/codes/pkg-snapshot/versions/1", version="1")
+
+        code_id = register_code_snapshot(ml_client, tmp_path, "pkg-snapshot")
+
+        assert code_id == "/codes/pkg-snapshot/versions/1"
+        ml_client._code.create_or_update.assert_called_once()
+        code = ml_client._code.create_or_update.call_args.args[0]
+        assert code.name == "pkg-snapshot"
+        assert code.version is None
+        assert Path(code.path).resolve() == tmp_path.resolve()
+
+
+class TestRunWithInjectedClient:
+    """A pooled client is used as-is; without one, ``run`` opens its own."""
+
+    def test_injected_client_is_used_and_none_is_opened(self, workspace_config, compute_config, mock_pipeline_job):
+        injected = MagicMock()
+        injected.compute.get.return_value = MagicMock(name="cpu-cluster", size="s", min_instances=0, max_instances=1)
+        with patch("kedro_azureml_pipeline.client._get_azureml_client") as mock_ctx:
+            ok = AzureMLPipelinesClient(mock_pipeline_job).run(workspace_config, compute_config, ml_client=injected)
+        assert ok is True
+        mock_ctx.assert_not_called()
+        injected.jobs.create_or_update.assert_called_once()
+
+    def test_client_without_code_operations_is_named(self, tmp_path):
+        from kedro_azureml_pipeline.client import register_code_snapshot
+
+        with pytest.raises(AttributeError, match="_code"):
+            register_code_snapshot(MagicMock(spec=[]), tmp_path, "pkg-snapshot")

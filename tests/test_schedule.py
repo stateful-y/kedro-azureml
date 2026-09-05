@@ -399,6 +399,7 @@ class TestScheduleCLI:
         with (
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro_azureml_pipeline.client.MLClient"),
             patch.object(
                 AzureMLPipelineGenerator,
                 "get_kedro_pipeline",
@@ -460,6 +461,7 @@ class TestScheduleCLI:
         with (
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro_azureml_pipeline.client.MLClient"),
             patch.object(
                 AzureMLPipelineGenerator,
                 "get_kedro_pipeline",
@@ -525,6 +527,7 @@ class TestScheduleCLI:
         with (
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro_azureml_pipeline.client.MLClient"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=tagged_pipeline),
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(AzureMLScheduleClient, "create_or_update_schedule", side_effect=_capture),
@@ -580,6 +583,7 @@ class TestScheduleCLI:
         with (
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
+            patch("kedro_azureml_pipeline.client.MLClient"),
             patch.object(
                 AzureMLPipelineGenerator,
                 "get_kedro_pipeline",

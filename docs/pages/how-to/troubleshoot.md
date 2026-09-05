@@ -116,6 +116,20 @@ warnings.filterwarnings("ignore", module="azure.ai.ml")
 
 ---
 
+## Submission is slow
+
+**Symptom**: `kedro azureml run` sits for minutes per job before printing a studio URL, with no error.
+
+**Cause**: Each pipeline step carries the project code. Azure ML resolves it per step by walking and hashing the whole `code_directory`, so a large working tree (a virtual environment, data, git objects) is scanned once per step. The plugin now avoids that by staging the snapshot once per invocation and registering it as one code asset that every step references; see [the `execution` configuration](../reference/configuration.md#execution).
+
+**If it is still slow**:
+
+- The single staging pass still walks `code_directory` once. On a very large tree that is a few seconds; measure it with `python -c "from kedro_azureml_pipeline.snapshot import select_snapshot_files; select_snapshot_files('.')"` and trim `.amlignore` or move heavy directories out of the tree if it dominates.
+- What remains is one component registration call per step. For independent jobs, `kedro azureml run --concurrent` submits several jobs at once; if the workspace answers with throttling errors, the pool is too large for it and the constant `CONCURRENT_SUBMIT_WORKERS` should come down.
+- Check that `execution.code_directory` is set. When it is `null` (image flow) there is no snapshot to speed up, and slow submission points elsewhere: the credential chain or the compute lookup.
+
+---
+
 ## Systematic debugging steps
 
 When encountering an unfamiliar issue, follow this approach:

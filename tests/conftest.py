@@ -372,3 +372,19 @@ def factory_catalog():
     resolver = CatalogConfigResolver(config={"{name}": {"type": "kedro.io.MemoryDataset"}})
     catalog = DataCatalog(datasets={"i2": parq}, config_resolver=resolver)
     return catalog
+
+
+@pytest.fixture(autouse=True)
+def _no_real_azure_credentials():
+    """Keep every test away from a real credential chain or a browser prompt.
+
+    ``get_azureml_credentials`` falls back to ``InteractiveBrowserCredential``
+    when the default chain fails, and the submit path now authenticates before
+    generating jobs. A test that forgets to patch the client must fail on a
+    mock, never open a browser.
+    """
+    with (
+        patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
+        patch("kedro_azureml_pipeline.client.InteractiveBrowserCredential"),
+    ):
+        yield

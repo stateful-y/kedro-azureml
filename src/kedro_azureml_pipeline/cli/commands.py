@@ -237,6 +237,15 @@ def compile(
     callback=dynamic_import_job_schedule_func_from_str,
     help="Callback function invoked after each job is submitted, format: path.to.module:function_name",
 )
+@click.option(
+    "--concurrent",
+    is_flag=True,
+    default=False,
+    help=(
+        "Submit the jobs from a small worker pool and attempt every one of them. "
+        "For jobs that do not depend on each other: disables the fail-fast ordering."
+    ),
+)
 @click.pass_obj
 @click.pass_context
 def run(
@@ -251,12 +260,16 @@ def run(
     dry_run: bool,
     wait_for_completion: bool,
     on_job_scheduled: Callable | None,
+    concurrent: bool,
 ):
     """Run named jobs immediately on Azure ML.
 
     Jobs are defined in the 'jobs' section of azureml.yml. Each job runs
     once immediately, ignoring any configured schedule.
     """
+    if concurrent and wait_for_completion:
+        raise click.UsageError("--concurrent and --wait-for-completion are mutually exclusive.")
+
     params = json.dumps(p) if (p := parse_runtime_params(params)) else ""
 
     if workspace_name:
@@ -281,6 +294,7 @@ def run(
         wait_for_completion=wait_for_completion,
         on_job_scheduled=on_job_scheduled,
         workspace_override=workspace_name,
+        concurrent=concurrent,
     )
 
     if is_ok:

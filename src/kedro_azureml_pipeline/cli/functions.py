@@ -5,7 +5,8 @@ import json
 import logging
 import re
 from collections.abc import Callable
-from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,6 +18,8 @@ from kedro_azureml_pipeline.manager import KedroContextManager
 from kedro_azureml_pipeline.utils import CliContext
 
 if TYPE_CHECKING:
+    from kedro_azureml_pipeline.client import BatchClients
+    from kedro_azureml_pipeline.config import KedroAzureMLConfig, WorkspaceConfig
     from kedro_azureml_pipeline.config.models import ScheduleConfig
 
 logger = logging.getLogger(__name__)
@@ -368,6 +371,49 @@ def compile_job_pipelines(
             click.echo(click.style(f"All {len(selected_jobs)} job(s) compiled successfully.", fg="green"))
 
 
+class SnapshotRegistrar:
+    """Stage the code snapshot once and register it once per workspace.
+
+    Used as the ``code_resolver`` of [`_prepare_jobs`][kedro_azureml_pipeline.cli.functions._prepare_jobs]:
+    the first job that needs code stages the snapshot, the first job per
+    workspace registers it, and every later job reuses the asset id. Nothing
+    happens when ``execution.code_directory`` is unset.
+
+    Parameters
+    ----------
+    stack : ExitStack
+        Owns the staged directory, so it lives until the batch is done.
+    clients : BatchClients
+        Client pool the registration goes through.
+    name : str
+        Code asset name.
+    """
+
+    def __init__(self, stack: ExitStack, clients: "BatchClients", name: str) -> None:
+        self._stack = stack
+        self._clients = clients
+        self._name = name
+        self._staged: Path | None = None
+        self._code_ids: dict[tuple[str, str, str], str] = {}
+
+    def __call__(self, config: "KedroAzureMLConfig", workspace: "WorkspaceConfig") -> str | None:
+        """Return the code asset id for *workspace*, staging and registering on first use."""
+        from kedro_azureml_pipeline.client import BatchClients, register_code_snapshot
+        from kedro_azureml_pipeline.snapshot import stage_code_snapshot
+
+        code_directory = config.execution.code_directory
+        if code_directory is None:
+            return None
+        key = BatchClients.key(workspace)
+        if key not in self._code_ids:
+            if self._staged is None:
+                # Relative to the working directory, which is where the SDK
+                # would have resolved the per-step path.
+                self._staged = self._stack.enter_context(stage_code_snapshot(Path.cwd() / code_directory))
+            self._code_ids[key] = register_code_snapshot(self._clients.get(workspace), self._staged, self._name)
+        return self._code_ids[key]
+
+
 @contextmanager
 def _prepare_jobs(
     ctx: CliContext,
@@ -376,6 +422,8 @@ def _prepare_jobs(
     extra_env: dict[str, str],
     load_versions: dict[str, str],
     job_names: list[str] | None,
+    workspace_override: str | None = None,
+    code_resolver: "Callable[[KedroAzureMLConfig, WorkspaceConfig], str | None] | None" = None,
 ):
     """Context manager that loads config, validates jobs, and generates pipelines.
 
@@ -393,6 +441,13 @@ def _prepare_jobs(
         Dataset version overrides.
     job_names : list of str or None
         If given, only prepare these jobs.
+    workspace_override : str or None
+        Named workspace override for all jobs in this batch.
+    code_resolver : callable or None
+        Called with the plugin config and each job's resolved workspace
+        before that job is generated; its result becomes the ``code`` of
+        every step. ``None`` leaves each step on ``execution.code_directory``,
+        which is what compile-only commands want.
 
     Yields
     ------
@@ -426,6 +481,11 @@ def _prepare_jobs(
             job_experiment_name = job_config.experiment_name or default_experiment_name
             mlflow_run_name = job_config.display_name or job_name
 
+            code = None
+            if code_resolver is not None:
+                workspace = config.workspace.resolve(workspace_override or job_config.workspace)
+                code = code_resolver(config, workspace)
+
             pipeline_opts = job_config.pipeline
             generator = AzureMLPipelineGenerator(
                 pipeline_opts.pipeline_name,
@@ -441,6 +501,7 @@ def _prepare_jobs(
                 mlflow_run_name=mlflow_run_name,
                 experiment_name=job_experiment_name,
                 limits_config=job_config.limits,
+                code=code,
             )
             pipeline_job = generator.generate()
 
@@ -463,6 +524,7 @@ def run_jobs(
     wait_for_completion: bool = False,
     on_job_scheduled: Callable | None = None,
     workspace_override: str | None = None,
+    concurrent: bool = False,
 ):
     """Run jobs immediately, ignoring any configured schedule.
 
@@ -488,34 +550,42 @@ def run_jobs(
         Callback invoked after each job is submitted.
     workspace_override : str or None
         Named workspace override for all jobs in this batch.
+    concurrent : bool
+        Submit the jobs from a pool of ``CONCURRENT_SUBMIT_WORKERS`` threads
+        and attempt every one of them. The default submits in order and
+        stops at the first failure, which dependent chains rely on.
 
     Returns
     -------
     bool
         ``True`` if all jobs ran successfully.
     """
-    from kedro_azureml_pipeline.client import AzureMLPipelinesClient
+    from kedro_azureml_pipeline.client import AzureMLPipelinesClient, BatchClients
+    from kedro_azureml_pipeline.constants import CONCURRENT_SUBMIT_WORKERS
 
-    with _prepare_jobs(ctx, aml_env, params, extra_env, load_versions, job_names) as (
-        config,
-        selected_jobs,
-        prepared,
-    ):
-        results: dict[str, bool] = {}
-        job_order = list(selected_jobs)
+    with ExitStack() as stack:
+        clients = BatchClients()
+        code_resolver = None if dry_run else SnapshotRegistrar(stack, clients, f"{ctx.metadata.package_name}-snapshot")
 
-        for index, job_name in enumerate(job_order):
-            try:
-                job_experiment_name, pipeline_job, job_config = prepared[job_name]
-                workspace = config.workspace.resolve(workspace_override or job_config.workspace)
-                pipeline_opts = job_config.pipeline
+        with _prepare_jobs(
+            ctx, aml_env, params, extra_env, load_versions, job_names, workspace_override, code_resolver
+        ) as (config, selected_jobs, prepared):
+            job_order = list(selected_jobs)
 
-                if dry_run:
-                    click.echo(
-                        f"[DRY RUN] Would run job '{job_name}' immediately (pipeline '{pipeline_opts.pipeline_name}')"
-                    )
-                    results[job_name] = True
-                else:
+            def submit(job_name: str) -> bool:
+                """Submit one prepared job; report and return ``False`` on any failure."""
+                try:
+                    job_experiment_name, pipeline_job, job_config = prepared[job_name]
+                    workspace = config.workspace.resolve(workspace_override or job_config.workspace)
+                    pipeline_opts = job_config.pipeline
+
+                    if dry_run:
+                        click.echo(
+                            f"[DRY RUN] Would run job '{job_name}' immediately "
+                            f"(pipeline '{pipeline_opts.pipeline_name}')"
+                        )
+                        return True
+
                     job_callback = on_job_scheduled or default_job_callback
                     az_client = AzureMLPipelinesClient(pipeline_job)
                     is_ok = az_client.run(
@@ -525,47 +595,50 @@ def run_jobs(
                         on_job_scheduled=job_callback,
                         compute_name=job_config.compute,
                         experiment_name=job_experiment_name,
+                        ml_client=clients.get(workspace),
                     )
                     if is_ok:
-                        click.echo(
-                            click.style(
-                                f"Job '{job_name}' submitted for immediate execution",
-                                fg="green",
+                        click.echo(click.style(f"Job '{job_name}' submitted for immediate execution", fg="green"))
+                    return is_ok
+                except Exception as e:
+                    click.echo(click.style(f"Failed to run job '{job_name}': {e}", fg="red"))
+                    logger.exception(f"Error running job '{job_name}'")
+                    return False
+
+            results: dict[str, bool] = {}
+            if concurrent and not dry_run:
+                # Independent jobs: attempt every one, no fail-fast.
+                with ThreadPoolExecutor(max_workers=min(CONCURRENT_SUBMIT_WORKERS, len(job_order))) as pool:
+                    results = dict(zip(job_order, pool.map(submit, job_order), strict=True))
+            else:
+                for index, job_name in enumerate(job_order):
+                    results[job_name] = submit(job_name)
+                    # Fail-fast: jobs in a batch are submitted in order and a later job
+                    # typically consumes an earlier one's output (e.g. snapshot -> training
+                    # -> inference). Once a job fails there is no point submitting the rest,
+                    # so stop and report the ones we skipped.
+                    if not results[job_name]:
+                        skipped = job_order[index + 1 :]
+                        if skipped:
+                            click.echo(
+                                click.style(
+                                    f"Aborting batch: '{job_name}' failed; "
+                                    f"skipping {len(skipped)} remaining job(s): {', '.join(skipped)}",
+                                    fg="red",
+                                )
                             )
-                        )
-                    results[job_name] = is_ok
+                        break
 
-            except Exception as e:
-                click.echo(click.style(f"Failed to run job '{job_name}': {e}", fg="red"))
-                logger.exception(f"Error running job '{job_name}'")
-                results[job_name] = False
+            succeeded = sum(1 for v in results.values() if v)
+            failed = sum(1 for v in results.values() if not v)
+            skipped_count = len(job_order) - len(results)
+            summary = f"\nRun summary: {succeeded} succeeded, {failed} failed"
+            if skipped_count:
+                summary += f", {skipped_count} skipped"
+            summary += f" (out of {len(job_order)} selected)"
+            click.echo(summary)
 
-            # Fail-fast: jobs in a batch are submitted in order and a later job
-            # typically consumes an earlier one's output (e.g. snapshot -> training
-            # -> inference). Once a job fails there is no point submitting the rest,
-            # so stop and report the ones we skipped.
-            if not results[job_name]:
-                skipped = job_order[index + 1 :]
-                if skipped:
-                    click.echo(
-                        click.style(
-                            f"Aborting batch: '{job_name}' failed; "
-                            f"skipping {len(skipped)} remaining job(s): {', '.join(skipped)}",
-                            fg="red",
-                        )
-                    )
-                break
-
-        succeeded = sum(1 for v in results.values() if v)
-        failed = sum(1 for v in results.values() if not v)
-        skipped_count = len(job_order) - len(results)
-        summary = f"\nRun summary: {succeeded} succeeded, {failed} failed"
-        if skipped_count:
-            summary += f", {skipped_count} skipped"
-        summary += f" (out of {len(job_order)} selected)"
-        click.echo(summary)
-
-        return all(results.values()) and not skipped_count
+            return all(results.values()) and not skipped_count
 
 
 def _schedule_entries(
@@ -706,80 +779,86 @@ def schedule_jobs(
     bool
         ``True`` if all schedules were created/updated successfully.
     """
-    from kedro_azureml_pipeline.scheduler import (
-        AzureMLScheduleClient,
-        build_job_schedule,
-        build_trigger,
-        resolve_schedule,
-    )
+    from kedro_azureml_pipeline.client import BatchClients
+    from kedro_azureml_pipeline.scheduler import AzureMLScheduleClient
 
-    with _prepare_jobs(ctx, aml_env, params, extra_env, load_versions, job_names) as (
-        config,
-        selected_jobs,
-        prepared,
-    ):
-        # Validate that all selected jobs have a schedule configured (None or [])
-        missing_schedule = [name for name, cfg in selected_jobs.items() if not cfg.schedule]
-        if missing_schedule:
-            raise click.ClickException(
-                f"Job(s) have no schedule configured: {', '.join(sorted(missing_schedule))}. "
-                f"Add a schedule to the job config or use 'kedro azureml run' instead."
+    with ExitStack() as stack:
+        code_resolver = (
+            None if dry_run else SnapshotRegistrar(stack, BatchClients(), f"{ctx.metadata.package_name}-snapshot")
+        )
+        with _prepare_jobs(
+            ctx, aml_env, params, extra_env, load_versions, job_names, workspace_override, code_resolver
+        ) as (config, selected_jobs, prepared):
+            return _create_schedules_from_prepared(
+                config, selected_jobs, prepared, dry_run, workspace_override, AzureMLScheduleClient()
             )
 
-        schedule_client = AzureMLScheduleClient()
-        results: dict[str, bool] = {}
 
-        for job_name in selected_jobs:
-            try:
-                job_experiment_name, pipeline_job, job_config = prepared[job_name]
-                workspace = config.workspace.resolve(workspace_override or job_config.workspace)
-                pipeline_opts = job_config.pipeline
+def _create_schedules_from_prepared(config, selected_jobs, prepared, dry_run, workspace_override, schedule_client):
+    """Create one Azure ML schedule per schedule entry of every prepared job; return whether all succeeded."""
+    from kedro_azureml_pipeline.scheduler import build_job_schedule, build_trigger, resolve_schedule
 
-                # Set experiment_name on the pipeline job so AzureML uses it
-                # for scheduled runs (analogous to run_jobs passing it to
-                # ml_client.jobs.create_or_update).
-                if job_experiment_name:
-                    pipeline_job.experiment_name = job_experiment_name
+    # Validate that all selected jobs have a schedule configured (None or [])
+    missing_schedule = [name for name, cfg in selected_jobs.items() if not cfg.schedule]
+    if missing_schedule:
+        raise click.ClickException(
+            f"Job(s) have no schedule configured: {', '.join(sorted(missing_schedule))}. "
+            f"Add a schedule to the job config or use 'kedro azureml run' instead."
+        )
 
-                # A job may declare one schedule or a list; deploy one Azure ML
-                # schedule (trigger) per entry, named via the shared convention.
-                for schedule_name, schedule_ref in _schedule_entries(job_name, job_config.schedule):
-                    schedule_cfg = resolve_schedule(schedule_ref, config.schedules)
-                    trigger = build_trigger(schedule_cfg)
-                    job_schedule = build_job_schedule(
-                        name=schedule_name,
-                        trigger=trigger,
-                        pipeline_job=pipeline_job,
-                        display_name=job_config.display_name,
-                        description=job_config.description,
-                    )
+    results: dict[str, bool] = {}
 
-                    if dry_run:
-                        if schedule_cfg.cron:
-                            trigger_desc = f"cron: {schedule_cfg.cron.expression}"
-                        else:
-                            rec = schedule_cfg.recurrence
-                            assert rec is not None  # noqa: S101 -- ScheduleConfig invariant: exactly one of cron/recurrence
-                            trigger_desc = f"recurrence: every {rec.interval} {rec.frequency}(s)"
-                        click.echo(
-                            f"[DRY RUN] Would create schedule '{schedule_name}' "
-                            f"({trigger_desc}) for pipeline '{pipeline_opts.pipeline_name}'"
-                        )
+    for job_name in selected_jobs:
+        try:
+            job_experiment_name, pipeline_job, job_config = prepared[job_name]
+            workspace = config.workspace.resolve(workspace_override or job_config.workspace)
+            pipeline_opts = job_config.pipeline
+
+            # Set experiment_name on the pipeline job so AzureML uses it
+            # for scheduled runs (analogous to run_jobs passing it to
+            # ml_client.jobs.create_or_update).
+            if job_experiment_name:
+                pipeline_job.experiment_name = job_experiment_name
+
+            # A job may declare one schedule or a list; deploy one Azure ML
+            # schedule (trigger) per entry, named via the shared convention.
+            for schedule_name, schedule_ref in _schedule_entries(job_name, job_config.schedule):
+                schedule_cfg = resolve_schedule(schedule_ref, config.schedules)
+                trigger = build_trigger(schedule_cfg)
+                job_schedule = build_job_schedule(
+                    name=schedule_name,
+                    trigger=trigger,
+                    pipeline_job=pipeline_job,
+                    display_name=job_config.display_name,
+                    description=job_config.description,
+                )
+
+                if dry_run:
+                    if schedule_cfg.cron:
+                        trigger_desc = f"cron: {schedule_cfg.cron.expression}"
                     else:
-                        result = schedule_client.create_or_update_schedule(job_schedule, workspace)
-                        click.echo(click.style(f"Schedule '{result.name}' created/updated successfully", fg="green"))
-                results[job_name] = True
+                        rec = schedule_cfg.recurrence
+                        assert rec is not None  # noqa: S101 -- ScheduleConfig invariant: exactly one of cron/recurrence
+                        trigger_desc = f"recurrence: every {rec.interval} {rec.frequency}(s)"
+                    click.echo(
+                        f"[DRY RUN] Would create schedule '{schedule_name}' "
+                        f"({trigger_desc}) for pipeline '{pipeline_opts.pipeline_name}'"
+                    )
+                else:
+                    result = schedule_client.create_or_update_schedule(job_schedule, workspace)
+                    click.echo(click.style(f"Schedule '{result.name}' created/updated successfully", fg="green"))
+            results[job_name] = True
 
-            except Exception as e:
-                click.echo(click.style(f"Failed to schedule job '{job_name}': {e}", fg="red"))
-                logger.exception(f"Error scheduling job '{job_name}'")
-                results[job_name] = False
+        except Exception as e:
+            click.echo(click.style(f"Failed to schedule job '{job_name}': {e}", fg="red"))
+            logger.exception(f"Error scheduling job '{job_name}'")
+            results[job_name] = False
 
-        succeeded = sum(1 for v in results.values() if v)
-        failed = sum(1 for v in results.values() if not v)
-        click.echo(f"\nSchedule summary: {succeeded} succeeded, {failed} failed (out of {len(results)} jobs)")
+    succeeded = sum(1 for v in results.values() if v)
+    failed = sum(1 for v in results.values() if not v)
+    click.echo(f"\nSchedule summary: {succeeded} succeeded, {failed} failed (out of {len(results)} jobs)")
 
-        return all(results.values())
+    return all(results.values())
 
 
 def _format_schedule(schedule: "ScheduleConfig | str | list[ScheduleConfig | str]") -> str:
