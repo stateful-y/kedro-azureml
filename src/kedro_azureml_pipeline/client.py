@@ -3,15 +3,15 @@
 import json
 import logging
 import os
+import threading
 from collections.abc import Callable
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 from azure.ai.ml import MLClient
 from azure.ai.ml.entities import Job
-from azure.ai.ml.entities._assets._artifacts.code import Code
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError, ServiceRequestError
 from azure.identity import CredentialUnavailableError, DefaultAzureCredential, InteractiveBrowserCredential
 
@@ -100,6 +100,9 @@ class BatchClients:
     def __init__(self) -> None:
         self._credential: TokenCredential | None = None
         self._clients: dict[tuple[str, str, str], MLClient] = {}
+        # `get` runs from the worker threads of a concurrent batch; without the
+        # lock two threads could each build a credential and a client.
+        self._lock = threading.Lock()
 
     @staticmethod
     def key(config: WorkspaceConfig) -> tuple[str, str, str]:
@@ -120,16 +123,33 @@ class BatchClients:
             The shared client for that workspace.
         """
         key = self.key(config)
-        if key not in self._clients:
-            if self._credential is None:
-                self._credential = get_azureml_credentials()
-            self._clients[key] = MLClient(
-                self._credential,
-                subscription_id=config.subscription_id,
-                resource_group_name=config.resource_group,
-                workspace_name=config.name,
-            )
-        return self._clients[key]
+        with self._lock:
+            if key not in self._clients:
+                if self._credential is None:
+                    self._credential = get_azureml_credentials()
+                self._clients[key] = MLClient(
+                    self._credential,
+                    subscription_id=config.subscription_id,
+                    resource_group_name=config.resource_group,
+                    workspace_name=config.name,
+                )
+            return self._clients[key]
+
+
+def _code_entity():
+    """Return the SDK's ``Code`` asset class.
+
+    It is not exported from ``azure.ai.ml.entities``; the private path is
+    isolated here so a relocation surfaces as one named error.
+    """
+    try:
+        from azure.ai.ml.entities._assets._artifacts.code import Code
+    except ImportError as exc:
+        from azure.ai.ml import __version__ as sdk_version
+
+        msg = f"azure-ai-ml {sdk_version} no longer exposes azure.ai.ml.entities._assets._artifacts.code.Code."
+        raise ImportError(msg) from exc
+    return Code
 
 
 def _code_operations(ml_client: MLClient):
@@ -172,7 +192,7 @@ def register_code_snapshot(ml_client: MLClient, staged_dir: str | Path, name: st
     --------
     [stage_code_snapshot][kedro_azureml_pipeline.snapshot.stage_code_snapshot] : Produces the directory registered here.
     """
-    registered = _code_operations(ml_client).create_or_update(Code(path=str(staged_dir), name=name))
+    registered = _code_operations(ml_client).create_or_update(_code_entity()(path=str(staged_dir), name=name))
     logger.info("Registered code snapshot %s:%s", registered.name, registered.version)
     return str(registered.id)
 
@@ -244,19 +264,10 @@ class AzureMLPipelinesClient:
                 "(tracking.experiment.name) or pass --experiment-name on the CLI. "
                 "Azure ML will use a default experiment name."
             )
-        if ml_client is not None:
+        client_scope = nullcontext(ml_client) if ml_client is not None else _get_azureml_client(config)
+        with client_scope as client:
             return self._submit(
-                ml_client,
-                compute_config,
-                wait_for_completion,
-                on_job_scheduled,
-                display_name,
-                compute_name,
-                experiment_name,
-            )
-        with _get_azureml_client(config) as own_client:
-            return self._submit(
-                own_client,
+                client,
                 compute_config,
                 wait_for_completion,
                 on_job_scheduled,

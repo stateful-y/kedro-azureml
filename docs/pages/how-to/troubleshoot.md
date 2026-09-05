@@ -124,7 +124,7 @@ warnings.filterwarnings("ignore", module="azure.ai.ml")
 
 **If it is still slow**:
 
-- The single staging pass still walks `code_directory` once. On a very large tree that is a few seconds; measure it with `python -c "from kedro_azureml_pipeline.snapshot import select_snapshot_files; select_snapshot_files('.')"` and trim `.amlignore` or move heavy directories out of the tree if it dominates.
+- The single staging pass still walks `code_directory` once. On a very large tree that is a few seconds; measure it with `time python -c "from kedro_azureml_pipeline.snapshot import select_snapshot_files; select_snapshot_files('.')"` and trim `.amlignore` or move heavy directories out of the tree if it dominates.
 - What remains is one component registration call per step. For independent jobs, `kedro azureml run --concurrent` submits several jobs at once; if the workspace answers with throttling errors, the pool is too large for it and the constant `CONCURRENT_SUBMIT_WORKERS` should come down.
 - Check that `execution.code_directory` is set. When it is `null` (image flow) there is no snapshot to speed up, and slow submission points elsewhere: the credential chain or the compute lookup.
 

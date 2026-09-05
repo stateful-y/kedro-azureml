@@ -633,8 +633,6 @@ class TestRun:
         with (
             patch.dict("kedro.framework.project.pipelines", {"__default__": dummy_pipeline}),
             patch.object(Path, "cwd", return_value=tmp_path),
-            patch("kedro_azureml_pipeline.client.MLClient"),
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
             patch.object(
@@ -716,7 +714,6 @@ class TestRun:
             patch.dict("kedro.framework.project.pipelines", {"__default__": dummy_pipeline}),
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.dict(os.environ, {}),
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch("click.confirm", return_value=confirm) as click_confirm,
         ):
             runner = CliRunner()
@@ -754,7 +751,6 @@ class TestRun:
             patch.dict("kedro.framework.project.pipelines", {"__default__": dummy_pipeline}),
             patch.object(Path, "cwd", return_value=tmp_path),
             patch("kedro_azureml_pipeline.client.MLClient") as ml_client_patched,
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
             patch.object(
@@ -804,7 +800,6 @@ class TestRun:
             patch.dict("kedro.framework.project.pipelines", {"__default__": dummy_pipeline}),
             patch.object(Path, "cwd", return_value=tmp_path),
             patch("kedro_azureml_pipeline.client.MLClient") as ml_client_patched,
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
         ):
             ml_client = ml_client_patched.return_value
             ml_client.jobs.stream.side_effect = ValueError()
@@ -862,8 +857,6 @@ class TestRun:
         with (
             patch.dict("kedro.framework.project.pipelines", {"__default__": dummy_pipeline}),
             patch.object(Path, "cwd", return_value=tmp_path),
-            patch("kedro_azureml_pipeline.client.MLClient"),
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
         ):
@@ -900,7 +893,6 @@ class TestRun:
             patch.dict("kedro.framework.project.pipelines", {"__default__": dummy_pipeline}),
             patch.object(Path, "cwd", return_value=tmp_path),
             patch("kedro_azureml_pipeline.client.MLClient") as ml_client_patched,
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
@@ -944,8 +936,6 @@ class TestRun:
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
-            patch("kedro_azureml_pipeline.client.MLClient"),
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
             patch.object(AzureMLPipelinesClient, "run", return_value=False),
         ):
@@ -983,8 +973,6 @@ class TestRun:
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
-            patch("kedro_azureml_pipeline.client.MLClient"),
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
             patch.object(AzureMLPipelinesClient, "run", return_value=False) as run_patched,
         ):
@@ -1026,8 +1014,6 @@ class TestRun:
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
-            patch("kedro_azureml_pipeline.client.MLClient"),
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
             # job_a succeeds, job_b fails; job_c must never be submitted.
             patch.object(AzureMLPipelinesClient, "run", side_effect=[True, False]) as run_patched,
@@ -1068,8 +1054,6 @@ class TestRun:
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
-            patch("kedro_azureml_pipeline.client.MLClient"),
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
             # job_a succeeds, job_b (last) fails: nothing left to skip.
             patch.object(AzureMLPipelinesClient, "run", side_effect=[True, False]) as run_patched,
@@ -1111,7 +1095,6 @@ class TestRun:
             patch.dict("kedro.framework.project.pipelines", {"__default__": dummy_pipeline}),
             patch.object(Path, "cwd", return_value=tmp_path),
             patch("kedro_azureml_pipeline.client.MLClient") as ml_client_patched,
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
@@ -1161,8 +1144,6 @@ class TestRun:
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
-            patch("kedro_azureml_pipeline.client.MLClient"),
-            patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline),
         ):
             result = run_jobs(

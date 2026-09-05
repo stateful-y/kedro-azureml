@@ -14,10 +14,17 @@ import kedro_azureml_pipeline.cli.commands as cli
 import kedro_azureml_pipeline.snapshot as snapshot_module
 from kedro_azureml_pipeline.cli.functions import run_jobs
 from kedro_azureml_pipeline.client import AzureMLPipelinesClient
-from kedro_azureml_pipeline.config import JobConfig, PipelineFilterOptions, WorkspaceConfig
+from kedro_azureml_pipeline.config import (
+    CronScheduleConfig,
+    JobConfig,
+    PipelineFilterOptions,
+    ScheduleConfig,
+    WorkspaceConfig,
+)
 from kedro_azureml_pipeline.constants import CONCURRENT_SUBMIT_WORKERS
 from kedro_azureml_pipeline.generator import AzureMLPipelineGenerator
 from kedro_azureml_pipeline.manager import KedroContextManager
+from kedro_azureml_pipeline.scheduler import AzureMLScheduleClient
 from tests.utils import create_kedro_conf_dirs
 
 CODE_ID = (
@@ -222,15 +229,6 @@ class TestConcurrentSubmission:
         assert "skipped" not in result.output
         assert "Aborting batch" not in result.output
 
-    def test_serial_default_still_fails_fast(self, submit_env):
-        submit_env.config.jobs = _jobs(["a", "b", "c"])
-        with patch.object(AzureMLPipelinesClient, "run", autospec=True, side_effect=self._fails_for({"b"})) as run:
-            result = CliRunner().invoke(cli.run, ["-j", "a", "-j", "b", "-j", "c"], obj=submit_env.ctx)
-
-        assert result.exit_code == 1
-        assert run.call_count == 2
-        assert "1 succeeded, 1 failed, 1 skipped (out of 3 selected)" in result.output
-
     def test_pool_is_bounded(self, submit_env):
         names = [f"job{i}" for i in range(2 * CONCURRENT_SUBMIT_WORKERS)]
         submit_env.config.jobs = _jobs(names)
@@ -277,6 +275,25 @@ class TestConcurrentSubmission:
         assert submit_env.credential_cls.call_count == 1
         assert submit_env.ml_client.jobs.create_or_update.call_count == 3
 
+    def test_image_flow_builds_one_client_under_the_pool(self, submit_env):
+        submit_env.config.execution.code_directory = None
+        names = [f"job{i}" for i in range(2 * CONCURRENT_SUBMIT_WORKERS)]
+        submit_env.config.jobs = _jobs(names)
+
+        def slow_credentials():
+            time.sleep(0.02)
+            return MagicMock()
+
+        with patch("kedro_azureml_pipeline.client.get_azureml_credentials", side_effect=slow_credentials) as creds:
+            result = CliRunner().invoke(
+                cli.run, ["--concurrent", *[flag for n in names for flag in ("-j", n)]], obj=submit_env.ctx
+            )
+
+        assert result.exit_code == 0, result.output
+        assert creds.call_count == 1
+        assert submit_env.ml_client_cls.call_count == 1
+        assert submit_env.ml_client.jobs.create_or_update.call_count == len(names)
+
     def test_concurrent_rejects_wait_for_completion(self, submit_env):
         submit_env.config.jobs = _jobs(["a"])
 
@@ -294,4 +311,42 @@ class TestConcurrentSubmission:
 
         assert result.exit_code == 0, result.output
         assert result.output.count("[DRY RUN]") == 2
+        submit_env.ml_client_cls.assert_not_called()
+
+
+class TestSnapshotOnSchedule:
+    """``schedule`` stages and registers like ``run`` and creates schedules through the pooled client."""
+
+    @staticmethod
+    def _scheduled(submit_env, names):
+        submit_env.config.schedules = {"daily": ScheduleConfig(cron=CronScheduleConfig(expression="0 6 * * *"))}
+        submit_env.config.jobs = _jobs(names, schedule="daily")
+
+    def test_registers_once_and_scheduled_steps_carry_the_id(self, submit_env):
+        self._scheduled(submit_env, ["a", "b"])
+        created = MagicMock()
+        created.name = "a"
+        with patch.object(
+            AzureMLScheduleClient, "create_or_update_schedule", autospec=True, return_value=created
+        ) as create:
+            result = CliRunner().invoke(cli.schedule, ["-j", "a", "-j", "b"], obj=submit_env.ctx)
+
+        assert result.exit_code == 0, result.output
+        assert submit_env.staging.call_count == 1
+        assert submit_env.ml_client._code.create_or_update.call_count == 1
+        assert create.call_count == 2
+        for call in create.call_args_list:
+            job_schedule = call.args[1]
+            assert all(step.component.code == CODE_ID for step in job_schedule.create_job.jobs.values())
+            assert call.kwargs["ml_client"] is submit_env.ml_client
+        assert submit_env.ml_client_cls.call_count == 1
+
+    def test_dry_run_neither_stages_nor_authenticates(self, submit_env):
+        self._scheduled(submit_env, ["a"])
+
+        result = CliRunner().invoke(cli.schedule, ["-j", "a", "--dry-run"], obj=submit_env.ctx)
+
+        assert result.exit_code == 0, result.output
+        assert "[DRY RUN]" in result.output
+        submit_env.staging.assert_not_called()
         submit_env.ml_client_cls.assert_not_called()

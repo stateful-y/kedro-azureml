@@ -783,19 +783,24 @@ def schedule_jobs(
     from kedro_azureml_pipeline.scheduler import AzureMLScheduleClient
 
     with ExitStack() as stack:
-        code_resolver = (
-            None if dry_run else SnapshotRegistrar(stack, BatchClients(), f"{ctx.metadata.package_name}-snapshot")
-        )
+        clients = BatchClients()
+        code_resolver = None if dry_run else SnapshotRegistrar(stack, clients, f"{ctx.metadata.package_name}-snapshot")
         with _prepare_jobs(
             ctx, aml_env, params, extra_env, load_versions, job_names, workspace_override, code_resolver
         ) as (config, selected_jobs, prepared):
             return _create_schedules_from_prepared(
-                config, selected_jobs, prepared, dry_run, workspace_override, AzureMLScheduleClient()
+                config, selected_jobs, prepared, dry_run, workspace_override, AzureMLScheduleClient(), clients
             )
 
 
-def _create_schedules_from_prepared(config, selected_jobs, prepared, dry_run, workspace_override, schedule_client):
-    """Create one Azure ML schedule per schedule entry of every prepared job; return whether all succeeded."""
+def _create_schedules_from_prepared(
+    config, selected_jobs, prepared, dry_run, workspace_override, schedule_client, clients
+):
+    """Create one Azure ML schedule per schedule entry of every prepared job; return whether all succeeded.
+
+    *clients* is the batch's client pool, so every schedule of a workspace goes
+    through the client that registered its code snapshot.
+    """
     from kedro_azureml_pipeline.scheduler import build_job_schedule, build_trigger, resolve_schedule
 
     # Validate that all selected jobs have a schedule configured (None or [])
@@ -845,7 +850,9 @@ def _create_schedules_from_prepared(config, selected_jobs, prepared, dry_run, wo
                         f"({trigger_desc}) for pipeline '{pipeline_opts.pipeline_name}'"
                     )
                 else:
-                    result = schedule_client.create_or_update_schedule(job_schedule, workspace)
+                    result = schedule_client.create_or_update_schedule(
+                        job_schedule, workspace, ml_client=clients.get(workspace)
+                    )
                     click.echo(click.style(f"Schedule '{result.name}' created/updated successfully", fg="green"))
             results[job_name] = True
 

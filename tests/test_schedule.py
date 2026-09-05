@@ -399,7 +399,6 @@ class TestScheduleCLI:
         with (
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
-            patch("kedro_azureml_pipeline.client.MLClient"),
             patch.object(
                 AzureMLPipelineGenerator,
                 "get_kedro_pipeline",
@@ -461,7 +460,6 @@ class TestScheduleCLI:
         with (
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
-            patch("kedro_azureml_pipeline.client.MLClient"),
             patch.object(
                 AzureMLPipelineGenerator,
                 "get_kedro_pipeline",
@@ -520,14 +518,13 @@ class TestScheduleCLI:
 
         created_names = []
 
-        def _capture(schedule, workspace):
+        def _capture(schedule, workspace, **kwargs):
             created_names.append(schedule.name)
             return schedule
 
         with (
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
-            patch("kedro_azureml_pipeline.client.MLClient"),
             patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=tagged_pipeline),
             patch.object(Path, "cwd", return_value=tmp_path),
             patch.object(AzureMLScheduleClient, "create_or_update_schedule", side_effect=_capture),
@@ -576,14 +573,13 @@ class TestScheduleCLI:
 
         captured_schedule = {}
 
-        def capture_schedule(schedule, config):
+        def capture_schedule(schedule, config, **kwargs):
             captured_schedule["pipeline_job"] = schedule.create_job
             return mock_result
 
         with (
             patch.object(KedroContextManager, "__enter__", return_value=mock_mgr),
             patch.object(KedroContextManager, "__exit__", return_value=False),
-            patch("kedro_azureml_pipeline.client.MLClient"),
             patch.object(
                 AzureMLPipelineGenerator,
                 "get_kedro_pipeline",

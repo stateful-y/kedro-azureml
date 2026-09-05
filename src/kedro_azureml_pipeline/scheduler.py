@@ -1,7 +1,8 @@
 """Azure ML schedule creation and management."""
 
 import logging
-from typing import Any
+from contextlib import nullcontext
+from typing import TYPE_CHECKING, Any
 
 from azure.ai.ml.entities import (
     CronTrigger,
@@ -16,6 +17,9 @@ from kedro_azureml_pipeline.config import (
     ScheduleConfig,
     WorkspaceConfig,
 )
+
+if TYPE_CHECKING:
+    from azure.ai.ml import MLClient
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +168,7 @@ class AzureMLScheduleClient:
         self,
         schedule: JobSchedule,
         config: WorkspaceConfig,
+        ml_client: "MLClient | None" = None,
     ) -> JobSchedule:
         """Create or update a schedule in the Azure ML workspace.
 
@@ -173,14 +178,18 @@ class AzureMLScheduleClient:
             The schedule to create or update.
         config : WorkspaceConfig
             Workspace configuration for the ``MLClient``.
+        ml_client : MLClient or None
+            Client to go through. When ``None``, one is opened from *config*
+            for this call.
 
         Returns
         -------
         JobSchedule
             The schedule as returned by the Azure ML service.
         """
-        with _get_azureml_client(config) as ml_client:
-            result = ml_client.schedules.begin_create_or_update(
+        client_scope = nullcontext(ml_client) if ml_client is not None else _get_azureml_client(config)
+        with client_scope as client:
+            result = client.schedules.begin_create_or_update(
                 schedule=schedule,
             ).result()
             logger.info(f"Schedule '{result.name}' created/updated successfully")

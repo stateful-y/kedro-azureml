@@ -381,10 +381,12 @@ def _no_real_azure_credentials():
     ``get_azureml_credentials`` falls back to ``InteractiveBrowserCredential``
     when the default chain fails, and the submit path now authenticates before
     generating jobs. A test that forgets to patch the client must fail on a
-    mock, never open a browser.
+    mock, never open a browser. Tests that assert on the client re-patch
+    ``MLClient`` with an ``as`` binding; the nested patch wins.
     """
     with (
         patch("kedro_azureml_pipeline.client.DefaultAzureCredential"),
         patch("kedro_azureml_pipeline.client.InteractiveBrowserCredential"),
+        patch("kedro_azureml_pipeline.client.MLClient"),
     ):
         yield

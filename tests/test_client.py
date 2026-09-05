@@ -305,3 +305,36 @@ class TestRunWithInjectedClient:
 
         with pytest.raises(AttributeError, match="_code"):
             register_code_snapshot(MagicMock(spec=[]), tmp_path, "pkg-snapshot")
+
+
+class TestScheduleClientWithInjectedClient:
+    """The schedule client uses a pooled client as-is and opens none of its own."""
+
+    def test_injected_client_is_used(self, workspace_config):
+        from kedro_azureml_pipeline.scheduler import AzureMLScheduleClient
+
+        injected = MagicMock()
+        with patch("kedro_azureml_pipeline.scheduler._get_azureml_client") as mock_ctx:
+            result = AzureMLScheduleClient().create_or_update_schedule(
+                MagicMock(), workspace_config, ml_client=injected
+            )
+
+        mock_ctx.assert_not_called()
+        injected.schedules.begin_create_or_update.assert_called_once()
+        assert result is injected.schedules.begin_create_or_update.return_value.result.return_value
+
+    def test_missing_code_entity_is_named(self, monkeypatch, tmp_path):
+        import builtins
+
+        from kedro_azureml_pipeline.client import register_code_snapshot
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "azure.ai.ml.entities._assets._artifacts.code":
+                raise ImportError("gone")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+        with pytest.raises(ImportError, match="azure-ai-ml .*Code"):
+            register_code_snapshot(MagicMock(), tmp_path, "pkg-snapshot")
