@@ -111,7 +111,7 @@ The combination of `environment` and `code_directory` determines the deployment 
 In the code flow, `kedro azureml run` and `kedro azureml schedule` stage the snapshot once per invocation and register it once per workspace:
 
 1. The files that the ignore file of `code_directory` keeps (`.amlignore` first, else `.gitignore`) are copied into a temporary directory. The selection is the Azure ML SDK's own, so a whitelist `.amlignore` behaves exactly as it does for a direct upload.
-2. That directory is registered as one code asset named `<package>-snapshot`, where `<package>` is the Kedro project's package name. The SDK looks the content hash up first, so unchanged code creates no new version and uploads nothing.
+2. That directory is registered as one anonymous code asset, the same content-addressed kind the SDK creates for snapshots itself. An upload whose content hash already exists in the workspace's storage is skipped and resolves to the existing asset, so unchanged code creates nothing new.
 3. Every step of every job in the batch references that asset instead of a local path.
 
 Without staging, the SDK walks and hashes the whole `code_directory` once per step, which for a large working tree (a virtual environment, data, git objects) dominates submission time. `kedro azureml compile` keeps the configured path in its output and neither stages nor registers, so it needs no credentials.

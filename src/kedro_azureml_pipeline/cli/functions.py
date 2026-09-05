@@ -385,14 +385,11 @@ class SnapshotRegistrar:
         Owns the staged directory, so it lives until the batch is done.
     clients : BatchClients
         Client pool the registration goes through.
-    name : str
-        Code asset name.
     """
 
-    def __init__(self, stack: ExitStack, clients: "BatchClients", name: str) -> None:
+    def __init__(self, stack: ExitStack, clients: "BatchClients") -> None:
         self._stack = stack
         self._clients = clients
-        self._name = name
         self._staged: Path | None = None
         self._code_ids: dict[tuple[str, str, str], str] = {}
 
@@ -410,7 +407,7 @@ class SnapshotRegistrar:
                 # Relative to the working directory, which is where the SDK
                 # would have resolved the per-step path.
                 self._staged = self._stack.enter_context(stage_code_snapshot(Path.cwd() / code_directory))
-            self._code_ids[key] = register_code_snapshot(self._clients.get(workspace), self._staged, self._name)
+            self._code_ids[key] = register_code_snapshot(self._clients.get(workspace), self._staged)
         return self._code_ids[key]
 
 
@@ -565,7 +562,7 @@ def run_jobs(
 
     with ExitStack() as stack:
         clients = BatchClients()
-        code_resolver = None if dry_run else SnapshotRegistrar(stack, clients, f"{ctx.metadata.package_name}-snapshot")
+        code_resolver = None if dry_run else SnapshotRegistrar(stack, clients)
 
         with _prepare_jobs(
             ctx, aml_env, params, extra_env, load_versions, job_names, workspace_override, code_resolver
@@ -784,7 +781,7 @@ def schedule_jobs(
 
     with ExitStack() as stack:
         clients = BatchClients()
-        code_resolver = None if dry_run else SnapshotRegistrar(stack, clients, f"{ctx.metadata.package_name}-snapshot")
+        code_resolver = None if dry_run else SnapshotRegistrar(stack, clients)
         with _prepare_jobs(
             ctx, aml_env, params, extra_env, load_versions, job_names, workspace_override, code_resolver
         ) as (config, selected_jobs, prepared):

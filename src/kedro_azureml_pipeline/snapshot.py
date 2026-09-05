@@ -41,7 +41,7 @@ def _sdk_selection_helpers():
     Returns
     -------
     tuple
-        ``(get_ignore_file, get_upload_files_from_folder, get_content_hash)``.
+        ``(get_ignore_file, get_upload_files_from_folder)``.
 
     Raises
     ------
@@ -51,34 +51,17 @@ def _sdk_selection_helpers():
         upgrade that moved them is easy to identify.
     """
     try:
-        from azure.ai.ml._utils._asset_utils import get_content_hash, get_ignore_file, get_upload_files_from_folder
+        from azure.ai.ml._utils._asset_utils import get_ignore_file, get_upload_files_from_folder
     except ImportError as exc:
         from azure.ai.ml import __version__ as sdk_version
 
         msg = (
-            f"azure-ai-ml {sdk_version} does not expose the snapshot helpers "
-            "(azure.ai.ml._utils._asset_utils.get_ignore_file / get_upload_files_from_folder / get_content_hash) "
+            f"azure-ai-ml {sdk_version} does not expose the snapshot selection helpers "
+            "(azure.ai.ml._utils._asset_utils.get_ignore_file / get_upload_files_from_folder) "
             "that kedro-azureml-pipeline uses to stage the code snapshot."
         )
         raise ImportError(msg) from exc
-    return get_ignore_file, get_upload_files_from_folder, get_content_hash
-
-
-def snapshot_content_hash(staged_dir: str | Path) -> str:
-    """Return the SDK's content hash of *staged_dir*, the value it files code assets under.
-
-    Parameters
-    ----------
-    staged_dir : str or Path
-        A staged snapshot directory, which holds no ignore file.
-
-    Returns
-    -------
-    str
-        Hex digest of the directory's file list and contents.
-    """
-    _, _, get_content_hash = _sdk_selection_helpers()
-    return str(get_content_hash(Path(staged_dir).resolve()))
+    return get_ignore_file, get_upload_files_from_folder
 
 
 def select_snapshot_files(code_directory: str | Path) -> list[tuple[Path, str]]:
@@ -97,7 +80,7 @@ def select_snapshot_files(code_directory: str | Path) -> list[tuple[Path, str]]:
         POSIX path relative to *code_directory*. Root ``.amlignore`` and
         ``.gitignore`` files are left out.
     """
-    get_ignore_file, get_upload_files_from_folder, _ = _sdk_selection_helpers()
+    get_ignore_file, get_upload_files_from_folder = _sdk_selection_helpers()
     root = Path(code_directory).resolve()
     ignore_file = get_ignore_file(root)
     selected = get_upload_files_from_folder(root, ignore_file=ignore_file)

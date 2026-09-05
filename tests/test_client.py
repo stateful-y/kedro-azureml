@@ -278,16 +278,12 @@ class TestRegisterCodeSnapshot:
         ml_client = MagicMock()
         ml_client._code.create_or_update.return_value = MagicMock(id="/codes/pkg-snapshot/versions/1", version="1")
 
-        code_id = register_code_snapshot(ml_client, tmp_path, "pkg-snapshot")
+        code_id = register_code_snapshot(ml_client, tmp_path)
 
         assert code_id == "/codes/pkg-snapshot/versions/1"
         ml_client._code.create_or_update.assert_called_once()
         code = ml_client._code.create_or_update.call_args.args[0]
-        from kedro_azureml_pipeline.snapshot import snapshot_content_hash
-
-        assert code.name == "pkg-snapshot"
-        assert code.version == snapshot_content_hash(tmp_path)
-        assert len(code.version) == 64
+        assert code._is_anonymous
         assert Path(code.path).resolve() == tmp_path.resolve()
 
 
@@ -307,7 +303,7 @@ class TestRunWithInjectedClient:
         from kedro_azureml_pipeline.client import register_code_snapshot
 
         with pytest.raises(AttributeError, match="_code"):
-            register_code_snapshot(MagicMock(spec=[]), tmp_path, "pkg-snapshot")
+            register_code_snapshot(MagicMock(spec=[]), tmp_path)
 
 
 class TestScheduleClientWithInjectedClient:
@@ -340,4 +336,4 @@ class TestScheduleClientWithInjectedClient:
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
         with pytest.raises(ImportError, match="azure-ai-ml .*Code"):
-            register_code_snapshot(MagicMock(), tmp_path, "pkg-snapshot")
+            register_code_snapshot(MagicMock(), tmp_path)

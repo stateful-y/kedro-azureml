@@ -166,15 +166,14 @@ def _code_operations(ml_client: MLClient):
     return operations
 
 
-def register_code_snapshot(ml_client: MLClient, staged_dir: str | Path, name: str) -> str:
-    """Register *staged_dir* as one code asset and return its id.
+def register_code_snapshot(ml_client: MLClient, staged_dir: str | Path) -> str:
+    """Register *staged_dir* as one anonymous code asset and return its id.
 
-    The SDK looks the directory's content hash up before uploading, so an
-    unchanged snapshot resolves to the asset it already registered and
-    uploads nothing. The version is that same content hash: the service
-    assigns no version to code assets on its own (a versionless create fails
-    in the SDK's serializer), and a content-derived version makes the same
-    snapshot the same asset on every machine.
+    Anonymous is the SDK's own scheme for snapshots: the asset is addressed
+    by content hash, and an upload whose hash already exists in the
+    workspace's storage is skipped and resolves to the existing asset. A
+    named asset is not an option: the service accepts only integer versions
+    on those and assigns none itself.
 
     Parameters
     ----------
@@ -182,8 +181,6 @@ def register_code_snapshot(ml_client: MLClient, staged_dir: str | Path, name: st
         Client for the workspace the jobs will run in.
     staged_dir : str or Path
         The staged snapshot directory.
-    name : str
-        Asset name, typically ``<package>-snapshot``.
 
     Returns
     -------
@@ -194,10 +191,7 @@ def register_code_snapshot(ml_client: MLClient, staged_dir: str | Path, name: st
     --------
     [stage_code_snapshot][kedro_azureml_pipeline.snapshot.stage_code_snapshot] : Produces the directory registered here.
     """
-    from kedro_azureml_pipeline.snapshot import snapshot_content_hash
-
-    code = _code_entity()(path=str(staged_dir), name=name, version=snapshot_content_hash(staged_dir))
-    registered = _code_operations(ml_client).create_or_update(code)
+    registered = _code_operations(ml_client).create_or_update(_code_entity()(path=str(staged_dir)))
     logger.info("Registered code snapshot %s:%s", registered.name, registered.version)
     return str(registered.id)
 

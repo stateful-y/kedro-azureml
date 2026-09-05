@@ -104,7 +104,7 @@ class TestSnapshotOnSubmit:
         assert submit_env.credential_cls.call_count == 1
         assert submit_env.ml_client_cls.call_count == 1
         registered = submit_env.ml_client._code.create_or_update.call_args.args[0]
-        assert registered.name == "tests-snapshot"
+        assert registered._is_anonymous
         assert submit_env.ml_client.jobs.create_or_update.call_count == 3
         steps = list(_submitted_steps(submit_env.ml_client))
         assert steps
