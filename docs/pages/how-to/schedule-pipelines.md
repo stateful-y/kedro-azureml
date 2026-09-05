@@ -133,3 +133,4 @@ The `-w` flag overrides the workspace for the current invocation. It does not mo
 - [CLI reference](../reference/cli.md#kedro-azureml-schedule) for all `kedro azureml schedule` flags
 - [Troubleshoot](troubleshoot.md#schedule-not-triggering) if your schedule is not triggering
 - [Deploy from CI/CD](deploy-from-cicd.md) for automating schedule creation in pipelines
+- [Notify on run outcomes](notify-on-run-outcomes.md) to hear when a scheduled run starts, finishes, or fails

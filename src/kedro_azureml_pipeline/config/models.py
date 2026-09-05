@@ -1,9 +1,9 @@
 """Pydantic configuration models for the Kedro AzureML Pipeline plugin."""
 
-from typing import Any
+from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 
 
 class WorkspaceConfig(BaseModel):
@@ -428,6 +428,101 @@ class PipelineFilterOptions(BaseModel):
         return {k: v for k, v in mapping.items() if v is not None}
 
 
+NotificationEventName = Literal["start", "success", "failure"]
+
+
+class NotificationConfig(BaseModel):
+    """Webhook notification for the runs of a job.
+
+    Referenced by name from a job's ``notifications`` field. The generator stamps
+    the definition into every step of the job, and
+    [NotificationHook][kedro_azureml_pipeline.hooks.NotificationHook] posts one
+    ``start`` message from a designated root step, one ``failure`` message from
+    the step that raised, and one ``success`` message from a designated leaf
+    step once every other leaf has finished.
+
+    Parameters
+    ----------
+    webhook_env : str
+        Name of the environment variable, inside the step, that holds the
+        webhook URL. The URL itself never appears in configuration.
+    events : list of {"start", "success", "failure"}
+        Events to report. At least one. (Named ``events`` rather than ``on``
+        because YAML 1.1 reads a bare ``on`` key as the boolean true.)
+    payload : str or None
+        ``module.path:function_name`` reference to a payload builder. It is
+        called with a [NotificationEvent][kedro_azureml_pipeline.hooks.NotificationEvent]
+        and returns the mapping posted as the request body. ``None`` posts a
+        plain ``{"text": ...}`` payload.
+    wait_timeout : int
+        Seconds the designated leaf step waits for its sibling leaves before
+        posting an outcome-unknown message instead of ``success``. Must be
+        below the job's ``limits.timeout`` when one is declared.
+
+    Examples
+    --------
+    ```yaml
+    notifications:
+      alerts:
+        webhook_env: SLACK_WEBHOOK_URL
+        events: [start, success, failure]
+        payload: my_project.notifications:build_payload
+
+    jobs:
+      nightly:
+        pipeline:
+          pipeline_name: data_processing
+        notifications: alerts
+    ```
+
+    See Also
+    --------
+    [JobConfig][kedro_azureml_pipeline.config.JobConfig] : References a definition by name.
+    [NotificationHook][kedro_azureml_pipeline.hooks.NotificationHook] : Posts the messages.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    webhook_env: str = Field(min_length=1, description="Environment variable holding the webhook URL inside the step.")
+    events: list[NotificationEventName] = Field(min_length=1, description="Events to report.")
+    payload: str | None = Field(
+        default=None,
+        description="Payload builder in 'module.path:function_name' format, or None for the default payload.",
+    )
+    wait_timeout: int = Field(
+        default=1800,
+        ge=1,
+        description="Seconds the outcome step waits for sibling leaves before posting outcome-unknown.",
+    )
+
+    @field_validator("payload")
+    @classmethod
+    def _validate_payload_reference(cls, value: str | None) -> str | None:
+        """Require the ``module.path:function_name`` shape when a builder is set.
+
+        Parameters
+        ----------
+        value : str or None
+            Raw ``payload`` field.
+
+        Returns
+        -------
+        str or None
+            The validated reference.
+
+        Raises
+        ------
+        ValueError
+            If the reference has no module part or no attribute part.
+        """
+        if value is None:
+            return value
+        module_str, _, attr_str = value.partition(":")
+        if not module_str or not attr_str:
+            raise ValueError("payload must be in 'module.path:function_name' format")
+        return value
+
+
 class JobConfig(BaseModel):
     """A single named job configuration.
 
@@ -451,6 +546,9 @@ class JobConfig(BaseModel):
         Run-duration limits applied to every step in this job.
     description : str or None
         Human-readable job description.
+    notifications : str or None
+        Name of a ``notifications`` definition whose webhook receives this
+        job's run events, or ``None`` for no notifications.
 
     Examples
     --------
@@ -475,6 +573,7 @@ class JobConfig(BaseModel):
     [PipelineFilterOptions][kedro_azureml_pipeline.config.PipelineFilterOptions] : Pipeline node filtering.
     [ScheduleConfig][kedro_azureml_pipeline.config.ScheduleConfig] : Schedule trigger specification.
     [LimitsConfig][kedro_azureml_pipeline.config.LimitsConfig] : Run-duration limits.
+    [NotificationConfig][kedro_azureml_pipeline.config.NotificationConfig] : Run-outcome notifications.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -496,6 +595,9 @@ class JobConfig(BaseModel):
         default=None, description="Run-duration limits applied to every step in this job."
     )
     description: str | None = Field(default=None, description="Human-readable job description.")
+    notifications: str | None = Field(
+        default=None, description="Name of a 'notifications' definition to post this job's run events to."
+    )
 
 
 class KedroAzureMLConfig(BaseModel):
@@ -511,6 +613,8 @@ class KedroAzureMLConfig(BaseModel):
         Code packaging and execution settings.
     schedules : dict of str to ScheduleConfig
         Reusable named schedule definitions.
+    notifications : dict of str to NotificationConfig
+        Reusable named webhook notification definitions.
     jobs : dict of str to JobConfig
         Named job definitions.
 
@@ -542,6 +646,7 @@ class KedroAzureMLConfig(BaseModel):
     [WorkspacesConfig][kedro_azureml_pipeline.config.WorkspacesConfig] : Workspace definitions.
     [ComputeConfig][kedro_azureml_pipeline.config.ComputeConfig] : Compute cluster definitions.
     [JobConfig][kedro_azureml_pipeline.config.JobConfig] : Individual job configurations.
+    [NotificationConfig][kedro_azureml_pipeline.config.NotificationConfig] : Run-outcome notifications.
     [KedroContextManager][kedro_azureml_pipeline.manager.KedroContextManager] : Loads and validates this config.
     """
 
@@ -555,10 +660,48 @@ class KedroAzureMLConfig(BaseModel):
     schedules: dict[str, ScheduleConfig] = Field(
         default_factory=dict, description="Reusable named schedule definitions."
     )
+    notifications: dict[str, NotificationConfig] = Field(
+        default_factory=dict, description="Reusable named webhook notification definitions."
+    )
     jobs: dict[str, JobConfig] = Field(
         default_factory=dict,
         description="Named job definitions. A key containing '{placeholder}' markers is a job factory whose jobs are derived from the Kedro pipeline namespaces.",
     )
+
+    @model_validator(mode="after")
+    def _validate_notification_references(self) -> "KedroAzureMLConfig":
+        """Resolve every job's notification reference and check its wait cap.
+
+        A job's ``notifications`` must name a defined entry. When the job also
+        declares ``limits.timeout``, the definition's ``wait_timeout`` must be
+        below it: the outcome step's wait counts against its own step budget,
+        and a step cancelled mid-wait posts nothing.
+
+        Returns
+        -------
+        KedroAzureMLConfig
+            The validated configuration.
+
+        Raises
+        ------
+        ValueError
+            If a reference is undefined or a wait cap is not below the step timeout.
+        """
+        for job_name, job in self.jobs.items():
+            if job.notifications is None:
+                continue
+            definition = self.notifications.get(job.notifications)
+            if definition is None:
+                raise ValueError(
+                    f"Job '{job_name}' references notification '{job.notifications}' which is not defined "
+                    "in the 'notifications' section of azureml.yml"
+                )
+            if job.limits is not None and definition.wait_timeout >= job.limits.timeout:
+                raise ValueError(
+                    f"Job '{job_name}': notification '{job.notifications}' wait_timeout ({definition.wait_timeout}s) "
+                    f"must be below the job's limits.timeout ({job.limits.timeout}s)"
+                )
+        return self
 
 
 CONFIG_TEMPLATE_YAML = """

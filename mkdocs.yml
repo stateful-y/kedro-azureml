@@ -262,6 +262,7 @@ nav:
     - Configure Multiple Workspaces: pages/how-to/configure-multiple-workspaces.md
     - Build a Custom Environment: pages/how-to/build-custom-environment.md
     - Deploy from CI/CD: pages/how-to/deploy-from-cicd.md
+    - Notify on Run Outcomes: pages/how-to/notify-on-run-outcomes.md
     - Compile and Inspect: pages/how-to/compile-and-inspect.md
     - Authenticate: pages/how-to/authenticate.md
     - Troubleshoot: pages/how-to/troubleshoot.md

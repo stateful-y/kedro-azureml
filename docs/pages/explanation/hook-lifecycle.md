@@ -50,6 +50,12 @@ The coordination works as follows:
 
 If the step fails, `MlflowAzureMLHook.on_pipeline_error` tags the run with error details so the failure is visible in the MLflow UI.
 
+## How run notifications work remotely
+
+The one-step-per-node model has a second consequence: Kedro's `before_pipeline_run` and `after_pipeline_run` fire once per node, so no single hook call knows that the *job* started or finished. [`NotificationHook`][kedro_azureml_pipeline.hooks.NotificationHook] gets that knowledge from the generator instead. When a job references a `notifications` definition, the generator stamps the definition into every step's environment as `KEDRO_AZUREML_NOTIFY`, marks one root step as the announcer (`KEDRO_AZUREML_NOTIFY_START`) and one leaf step as the poster (`KEDRO_AZUREML_NOTIFY_OUTCOME` plus the names of its sibling leaves). The announcer posts `start` at its pipeline start, any step that raises posts `failure` from `on_pipeline_error`, and the poster waits in `after_pipeline_run` until every sibling leaf's MLflow run is terminal before posting `success`.
+
+That wait is why the feature leans on [`MlflowAzureMLHook`][kedro_azureml_pipeline.hooks.MlflowAzureMLHook]: the sibling runs are found by the `kedro.node_name` tag it writes, and a sibling that failed without running its own error hook is recognised by the missing `kedro.error` tag. The hook is inert whenever `KEDRO_AZUREML_NOTIFY` is absent, which is every local run. See [Notify on run outcomes](../how-to/notify-on-run-outcomes.md) for the setup.
+
 ## Writing hooks that work in both contexts
 
 If you are writing a custom hook that needs to behave differently during local and remote runs, the simplest approach is to check the runner type in `before_pipeline_run`:
@@ -75,4 +81,5 @@ This is the same pattern the plugin's own [`AzureMLLocalRunHook`][kedro_azureml_
 
 - [Architecture overview](architecture.md): how hooks fit into the broader plugin design
 - [How to use MLflow](../how-to/use-mlflow.md): practical setup for the kedro-mlflow integration
-- [API reference](../reference/api.md): [`AzureMLLocalRunHook`][kedro_azureml_pipeline.hooks.AzureMLLocalRunHook] and [`MlflowAzureMLHook`][kedro_azureml_pipeline.hooks.MlflowAzureMLHook] class docs
+- [How to notify on run outcomes](../how-to/notify-on-run-outcomes.md): practical setup for the webhook notifications
+- [API reference](../reference/api.md): [`AzureMLLocalRunHook`][kedro_azureml_pipeline.hooks.AzureMLLocalRunHook], [`MlflowAzureMLHook`][kedro_azureml_pipeline.hooks.MlflowAzureMLHook], and [`NotificationHook`][kedro_azureml_pipeline.hooks.NotificationHook] class docs

@@ -1,7 +1,9 @@
 """Azure ML pipeline generation from Kedro pipelines."""
 
+import json
 import logging
 import re
+from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
@@ -24,6 +26,7 @@ from kedro_azureml_pipeline.config import (
     ClusterConfig,
     KedroAzureMLConfig,
     LimitsConfig,
+    NotificationConfig,
     PipelineFilterOptions,
 )
 from kedro_azureml_pipeline.constants import (
@@ -32,6 +35,10 @@ from kedro_azureml_pipeline.constants import (
     KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME,
     KEDRO_AZUREML_MLFLOW_NODE_NAME,
     KEDRO_AZUREML_MLFLOW_RUN_NAME,
+    KEDRO_AZUREML_NOTIFY,
+    KEDRO_AZUREML_NOTIFY_OUTCOME,
+    KEDRO_AZUREML_NOTIFY_SIBLINGS,
+    KEDRO_AZUREML_NOTIFY_START,
     PARAMS_PREFIX,
 )
 from kedro_azureml_pipeline.datasets import AzureMLAssetDataset
@@ -62,6 +69,30 @@ class ConfigException(BaseException):
     """
 
     pass
+
+
+@dataclass(frozen=True)
+class NotificationRoles:
+    """Which steps of a job speak for it.
+
+    Parameters
+    ----------
+    announcer : str
+        Name of the root node whose step posts ``start``.
+    poster : str
+        Name of the leaf node whose step posts the outcome.
+    siblings : tuple of str
+        Names of the other leaf nodes the poster waits for.
+
+    See Also
+    --------
+    [AzureMLPipelineGenerator][kedro_azureml_pipeline.generator.AzureMLPipelineGenerator] : Computes the roles.
+    [NotificationHook][kedro_azureml_pipeline.hooks.NotificationHook] : Reads them from the step environment.
+    """
+
+    announcer: str
+    poster: str
+    siblings: tuple[str, ...]
 
 
 class AzureMLPipelineGenerator:
@@ -99,6 +130,12 @@ class AzureMLPipelineGenerator:
         Code reference for every step, typically the id of a registered
         code asset. When ``None``, each step carries
         ``execution.code_directory`` and Azure ML resolves it per step.
+    notification_config : NotificationConfig or None
+        Webhook notification definition stamped into every step, or ``None``.
+    job_name : str or None
+        Name of the job being generated, carried in the notification payloads.
+    display_name : str or None
+        Display name of the job, carried in the notification payloads.
 
     See Also
     --------
@@ -124,6 +161,9 @@ class AzureMLPipelineGenerator:
         experiment_name: str | None = None,
         limits_config: LimitsConfig | None = None,
         code: str | None = None,
+        notification_config: NotificationConfig | None = None,
+        job_name: str | None = None,
+        display_name: str | None = None,
     ):
         if load_versions is None:
             load_versions = {}
@@ -144,6 +184,9 @@ class AzureMLPipelineGenerator:
         self.mlflow_run_name = mlflow_run_name
         self.experiment_name = experiment_name
         self.limits_config = limits_config
+        self.notification_config = notification_config
+        self.job_name = job_name
+        self.display_name = display_name
 
     def generate(self) -> Job:
         """Build and return the Azure ML pipeline ``Job``.
@@ -159,6 +202,7 @@ class AzureMLPipelineGenerator:
             if filter_kwargs:
                 pipeline = pipeline.filter(**filter_kwargs)
         kedro_azure_run_id = uuid4().hex
+        roles = self.notification_roles(pipeline)
 
         logger.info(f"Translating {self.pipeline_name} to Azure ML Pipeline")
 
@@ -167,7 +211,7 @@ class AzureMLPipelineGenerator:
             commands = {}
 
             for node in pipeline.nodes:
-                azure_command = self._construct_azure_command(pipeline, node, kedro_azure_run_id)
+                azure_command = self._construct_azure_command(pipeline, node, kedro_azure_run_id, roles)
 
                 commands[node.name] = azure_command
 
@@ -184,6 +228,80 @@ class AzureMLPipelineGenerator:
 
         azure_pipeline_job: Job = kedro_azure_pipeline()
         return azure_pipeline_job
+
+    def notification_roles(self, pipeline: Pipeline) -> NotificationRoles | None:
+        """Designate the announcer and poster steps of *pipeline*.
+
+        The announcer is the first root in topological order and the poster the
+        last leaf, ties broken by node name, so the same pipeline always yields
+        the same roles. A single-node pipeline is both.
+
+        Parameters
+        ----------
+        pipeline : Pipeline
+            The filtered Kedro pipeline about to be translated.
+
+        Returns
+        -------
+        NotificationRoles or None
+            The roles, or ``None`` when the job has no notification definition.
+
+        Raises
+        ------
+        ConfigException
+            If ``success`` is enabled on a pipeline with several leaves and the
+            job declares no experiment name. The poster identifies its sibling
+            leaves through the MLflow integration, which only an experiment
+            name activates, so without one it would wait out its cap on every run.
+        """
+        if self.notification_config is None:
+            return None
+        dependencies = pipeline.node_dependencies
+        topo_index = {node: index for index, group in enumerate(pipeline.grouped_nodes) for node in group}
+        has_dependants = {parent for parents in dependencies.values() for parent in parents}
+        roots = [node for node in pipeline.nodes if not dependencies[node]]
+        leaves = [node for node in pipeline.nodes if node not in has_dependants]
+        if len(leaves) > 1 and "success" in self.notification_config.events and not self.experiment_name:
+            raise ConfigException(
+                f"Job '{self.job_name}' enables the 'success' notification on a pipeline with {len(leaves)} leaf "
+                "nodes but declares no experiment_name. The outcome step identifies its sibling leaves through "
+                "the MLflow integration, which an experiment name activates."
+            )
+        announcer = min(roots, key=lambda node: (topo_index[node], node.name))
+        poster = max(leaves, key=lambda node: (topo_index[node], node.name))
+        siblings = tuple(sorted(node.name for node in leaves if node is not poster))
+        return NotificationRoles(announcer=announcer.name, poster=poster.name, siblings=siblings)
+
+    def _notification_env(self, node: Node, roles: NotificationRoles | None) -> dict[str, str]:
+        """Environment variables that tell a step its notification duties.
+
+        Parameters
+        ----------
+        node : Node
+            Kedro node the step runs.
+        roles : NotificationRoles or None
+            Roles computed for the pipeline, or ``None`` for no notifications.
+
+        Returns
+        -------
+        dict of str to str
+            The definition on every step, plus the announcer and poster markers.
+        """
+        if roles is None or self.notification_config is None:
+            return {}
+        definition = {
+            **self.notification_config.model_dump(),
+            "job_name": self.job_name,
+            "display_name": self.display_name or self.job_name,
+            "pipeline_name": self.pipeline_name,
+        }
+        env = {KEDRO_AZUREML_NOTIFY: json.dumps(definition)}
+        if node.name == roles.announcer:
+            env[KEDRO_AZUREML_NOTIFY_START] = "1"
+        if node.name == roles.poster:
+            env[KEDRO_AZUREML_NOTIFY_OUTCOME] = "1"
+            env[KEDRO_AZUREML_NOTIFY_SIBLINGS] = ",".join(roles.siblings)
+        return env
 
     def get_kedro_pipeline(self) -> Pipeline:
         """Retrieve the registered Kedro pipeline by name.
@@ -451,6 +569,7 @@ class AzureMLPipelineGenerator:
         pipeline: Pipeline,
         node: Node,
         kedro_azure_run_id: str,
+        roles: NotificationRoles | None = None,
     ):
         """Build an Azure ML ``command`` component for *node*.
 
@@ -462,6 +581,8 @@ class AzureMLPipelineGenerator:
             Kedro node to convert.
         kedro_azure_run_id : str
             Unique identifier for the Azure ML run.
+        roles : NotificationRoles or None
+            Notification roles for the pipeline, or ``None`` for no notifications.
 
         Returns
         -------
@@ -491,6 +612,7 @@ class AzureMLPipelineGenerator:
             environment_variables={
                 "KEDRO_ENV": self.kedro_environment,
                 **mlflow_env_vars,
+                **self._notification_env(node, roles),
                 **self.extra_env,
             },
             environment=self._resolve_azure_environment(),

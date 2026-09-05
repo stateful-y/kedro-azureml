@@ -85,6 +85,8 @@ def notify_slack(job_info):
 kedro azureml run -j training --on-job-scheduled myproject.callbacks:notify_slack
 ```
 
+The callback fires once, in the submitting shell, right after submission. For a message when the run finishes or fails, and for runs the scheduler triggers, use a [`notifications`](../reference/configuration.md#notifications) definition instead; see [Notify on run outcomes](notify-on-run-outcomes.md).
+
 ## Submit a dependent batch (fail-fast)
 
 Pass `-j` multiple times to submit several jobs in one invocation. They are submitted **in the order given**, and submission is **fail-fast**: if a job fails, the remaining jobs are skipped instead of launched.
@@ -120,3 +122,4 @@ kedro azureml run -j training --env prod
 - [CLI reference](../reference/cli.md#kedro-azureml-run) for all `run` flags
 - [Compile and inspect](compile-and-inspect.md#validate-that-every-job-compiles) for the `compile --check --all` validation gate
 - [How to configure multiple workspaces](configure-multiple-workspaces.md) for workspace management
+- [Notify on run outcomes](notify-on-run-outcomes.md) for start, success, and failure messages from inside the job
