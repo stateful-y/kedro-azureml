@@ -95,6 +95,10 @@ class AzureMLPipelineGenerator:
         Azure ML experiment name (enables MLflow tracking when set).
     limits_config : LimitsConfig or None
         Run-duration limits applied to every step in the pipeline.
+    code : str or None
+        Code reference for every step, typically the id of a registered
+        code asset. When ``None``, each step carries
+        ``execution.code_directory`` and Azure ML resolves it per step.
 
     See Also
     --------
@@ -119,12 +123,14 @@ class AzureMLPipelineGenerator:
         mlflow_run_name: str | None = None,
         experiment_name: str | None = None,
         limits_config: LimitsConfig | None = None,
+        code: str | None = None,
     ):
         if load_versions is None:
             load_versions = {}
         if extra_env is None:
             extra_env = {}
         self.kedro_environment = kedro_environment
+        self.code = code
 
         self.params = params
         self.kedro_params = kedro_params
@@ -490,7 +496,7 @@ class AzureMLPipelineGenerator:
             environment=self._resolve_azure_environment(),
             inputs={self._sanitize_param_name(name): self._get_input(name, pipeline) for name in node.inputs},
             outputs={self._sanitize_param_name(name): self._get_output(name) for name in node.outputs},
-            code=self.config.execution.code_directory,
+            code=self.code if self.code is not None else self.config.execution.code_directory,
             is_deterministic=("deterministic" in node.tags),
             **command_kwargs,
         )

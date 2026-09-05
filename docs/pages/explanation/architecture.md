@@ -21,6 +21,12 @@ The [`AzureMLPipelineGenerator`][kedro_azureml_pipeline.generator.AzureMLPipelin
 
 The result is an Azure ML Pipeline YAML definition that Azure ML can schedule, monitor, and instrument natively.
 
+### One code snapshot per invocation
+
+Every step needs the project code. Azure ML resolves a step's `code` on its own: it walks the directory, applies the ignore file, hashes what remains, and looks the hash up in the workspace. Left to itself it does that once per step, and with `code_directory: "."` each walk covers the whole checkout, virtual environment and data included. A batch of jobs with a dozen steps each repeats that work hundreds of times before anything is submitted.
+
+`kedro azureml run` and `kedro azureml schedule` therefore prepare the code before generating any job. [`stage_code_snapshot`][kedro_azureml_pipeline.snapshot.stage_code_snapshot] copies the files the ignore rules keep into a temporary directory, using the SDK's own selection so the result is what a direct upload would have contained. [`register_code_snapshot`][kedro_azureml_pipeline.client.register_code_snapshot] then registers that directory as one code asset per workspace, and the generator receives the asset id as the `code` of every step. The SDK recognises a registered id and resolves nothing further, so the per-step cost drops to one component registration call. Compile-only commands skip both steps and keep the configured path, which is why they need no credentials.
+
 ## Remote step execution
 
 When Azure ML runs a pipeline step, it calls the internal `kedro azureml execute` command inside a container on compute. This command:

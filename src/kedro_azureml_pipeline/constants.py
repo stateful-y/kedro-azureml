@@ -10,6 +10,11 @@ See Also
 DISTRIBUTED_CONFIG_FIELD = "__kedro_azureml_distributed_config__"
 PARAMS_PREFIX = "params:"
 
+# Worker pool size for `kedro azureml run --concurrent`. A constant rather than
+# a flag: one number to tune, and small enough that a batch stays well under the
+# workspace's request limits.
+CONCURRENT_SUBMIT_WORKERS = 4
+
 # MLflow integration env vars (set by generator, read by MlflowAzureMLHook)
 KEDRO_AZUREML_MLFLOW_ENABLED = "KEDRO_AZUREML_MLFLOW_ENABLED"
 KEDRO_AZUREML_MLFLOW_RUN_NAME = "KEDRO_AZUREML_MLFLOW_RUN_NAME"

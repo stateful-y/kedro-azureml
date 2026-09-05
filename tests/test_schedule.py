@@ -518,7 +518,7 @@ class TestScheduleCLI:
 
         created_names = []
 
-        def _capture(schedule, workspace):
+        def _capture(schedule, workspace, **kwargs):
             created_names.append(schedule.name)
             return schedule
 
@@ -573,7 +573,7 @@ class TestScheduleCLI:
 
         captured_schedule = {}
 
-        def capture_schedule(schedule, config):
+        def capture_schedule(schedule, config, **kwargs):
             captured_schedule["pipeline_job"] = schedule.create_job
             return mock_result
 

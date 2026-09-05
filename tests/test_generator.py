@@ -831,3 +831,36 @@ class TestResolveAzureEnvironment:
             "test", "local", dummy_plugin_config, {}, catalog=multi_catalog, aml_env="override-env@latest"
         )
         assert gen._resolve_azure_environment() == "override-env@latest"
+
+
+class TestCodeReference:
+    """Every step carries the code reference when one is given, else the configured directory."""
+
+    CODE_ID = (
+        "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.MachineLearningServices"
+        "/workspaces/ws/codes/pkg-snapshot/versions/3"
+    )
+
+    def _generate(self, dummy_pipeline, dummy_plugin_config, multi_catalog, **kwargs):
+        with patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline):
+            return AzureMLPipelineGenerator(
+                "dummy_pipeline", "unit_test_env", dummy_plugin_config, {}, catalog=multi_catalog, **kwargs
+            ).generate()
+
+    def test_reference_on_every_step_with_unchanged_commands(self, dummy_pipeline, dummy_plugin_config, multi_catalog):
+        with_ref = self._generate(dummy_pipeline, dummy_plugin_config, multi_catalog, code=self.CODE_ID)
+        without = self._generate(dummy_pipeline, dummy_plugin_config, multi_catalog)
+        assert with_ref.jobs.keys() == without.jobs.keys()
+        for name, step in with_ref.jobs.items():
+            assert step.component.code == self.CODE_ID
+            assert step.command == without.jobs[name].command
+
+    def test_no_reference_keeps_the_configured_directory(self, dummy_pipeline, dummy_plugin_config, multi_catalog):
+        dummy_plugin_config.execution.code_directory = "app"
+        az_pipeline = self._generate(dummy_pipeline, dummy_plugin_config, multi_catalog)
+        assert all(step.component.code == "app" for step in az_pipeline.jobs.values())
+
+    def test_no_code_directory_means_no_code(self, dummy_pipeline, dummy_plugin_config, multi_catalog):
+        dummy_plugin_config.execution.code_directory = None
+        az_pipeline = self._generate(dummy_pipeline, dummy_plugin_config, multi_catalog)
+        assert all(step.component.code is None for step in az_pipeline.jobs.values())
