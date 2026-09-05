@@ -20,7 +20,7 @@ from kedro_azureml_pipeline.utils import CliContext
 if TYPE_CHECKING:
     from kedro_azureml_pipeline.client import BatchClients
     from kedro_azureml_pipeline.config import KedroAzureMLConfig, WorkspaceConfig
-    from kedro_azureml_pipeline.config.models import ScheduleConfig
+    from kedro_azureml_pipeline.config.models import JobConfig, NotificationConfig, ScheduleConfig
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +238,41 @@ def parse_display_name_overrides(entries, job_names) -> dict[str, str]:
     return overrides
 
 
+def import_callable(import_str: str) -> Callable:
+    """Import a callable from a ``module.path:function_name`` reference.
+
+    Shared by the ``--on-job-scheduled`` Click option and the notification
+    hook's payload builder, so both accept the same reference shape.
+
+    Parameters
+    ----------
+    import_str : str
+        Import path in ``module.path:function_name`` format.
+
+    Returns
+    -------
+    callable
+        The imported callable.
+
+    Raises
+    ------
+    ValueError
+        If the format is invalid, the module cannot be imported, the attribute
+        is missing, or the attribute is not callable.
+    """
+    module_str, _, attrs_str = import_str.partition(":")
+    if not module_str or not attrs_str:
+        raise ValueError("import_str must be in format <module>:<function>")
+    try:
+        module = importlib.import_module(module_str)
+        instance = getattr(module, attrs_str)
+    except (ImportError, AttributeError) as e:
+        raise ValueError(str(e)) from e
+    if not callable(instance):
+        raise ValueError(f"The attribute '{attrs_str}' is not a callable function.")
+    return instance
+
+
 def dynamic_import_job_schedule_func_from_str(
     ctx: click.Context,
     param: click.Parameter,
@@ -267,25 +302,32 @@ def dynamic_import_job_schedule_func_from_str(
     """
     # base case: no callback
     if import_str is None:
-        return
-
-    # check format
-    module_str, _, attrs_str = import_str.partition(":")
-    if not module_str or not attrs_str:
-        raise click.BadParameter("import_str must be in format <module>:<function>", param=param)
-
+        return None
     try:
-        module = importlib.import_module(module_str)
-        instance = getattr(module, attrs_str)
+        return import_callable(import_str)
+    except ValueError as e:
+        raise click.BadParameter(str(e), param=param) from e
 
-        # fails if we try to import an attribute that is not a function
-        if not callable(instance):
-            raise click.BadParameter(f"The attribute '{attrs_str}' is not a callable function.", param=param)
 
-        return instance
-    except (ImportError, AttributeError, ValueError) as e:
-        # catches errors if module or attribute does not exist
-        raise click.BadParameter(f"Error: {e}", param=param) from e
+def _notification_for(config: "KedroAzureMLConfig", job_config: "JobConfig") -> "NotificationConfig | None":
+    """Resolve a job's notification reference against the config's definitions.
+
+    Parameters
+    ----------
+    config : KedroAzureMLConfig
+        Loaded plugin configuration.
+    job_config : JobConfig
+        The job whose ``notifications`` field names a definition, or ``None``.
+
+    Returns
+    -------
+    NotificationConfig or None
+        The definition, or ``None`` when the job declares none. Unknown names
+        cannot reach here: configuration loading rejects them.
+    """
+    if job_config.notifications is None:
+        return None
+    return config.notifications[job_config.notifications]
 
 
 def default_job_callback(job):
@@ -385,6 +427,9 @@ def compile_job_pipelines(
                     mlflow_run_name=mlflow_run_name,
                     experiment_name=job_experiment_name,
                     limits_config=job_config.limits,
+                    notification_config=_notification_for(config, job_config),
+                    job_name=job_name,
+                    display_name=job_config.display_name,
                 )
                 az_pipeline = generator.generate()
             except Exception as exc:  # noqa: BLE001
@@ -541,6 +586,9 @@ def _prepare_jobs(
                 experiment_name=job_experiment_name,
                 limits_config=job_config.limits,
                 code=code,
+                notification_config=_notification_for(config, job_config),
+                job_name=job_name,
+                display_name=job_config.display_name,
             )
             pipeline_job = generator.generate()
 

@@ -9,9 +9,11 @@ import pytest
 
 from kedro_azureml_pipeline.cli.functions import (
     _merge_job_params,
+    _notification_for,
     _read_mlflow_experiment_name,
     default_job_callback,
     dynamic_import_job_schedule_func_from_str,
+    import_callable,
     parse_display_name_overrides,
     parse_extra_env_params,
     parse_runtime_params,
@@ -300,3 +302,51 @@ class TestParseDisplayNameOverrides:
     def test_unselected_job_is_a_usage_error(self):
         with pytest.raises(click.UsageError, match="not among the selected"):
             parse_display_name_overrides(["b=x"], ["a"])
+
+
+class TestImportCallable:
+    """The shared ``module:function`` importer."""
+
+    def test_imports_a_callable(self):
+        assert import_callable("os.path:join") is __import__("os").path.join
+
+    def test_rejects_missing_colon(self):
+        with pytest.raises(ValueError, match="format"):
+            import_callable("no_colon")
+
+    def test_rejects_unknown_module(self):
+        with pytest.raises(ValueError, match="No module named"):
+            import_callable("definitely_not_a_module_xyz:fn")
+
+    def test_rejects_missing_attribute(self):
+        with pytest.raises(ValueError, match="has no attribute"):
+            import_callable("os.path:definitely_missing")
+
+    def test_rejects_non_callable(self):
+        with pytest.raises(ValueError, match="not a callable"):
+            import_callable("os.path:sep")
+
+
+class TestNotificationFor:
+    """Resolving a job's notification reference against the loaded config."""
+
+    def test_none_when_job_declares_none(self):
+        from kedro_azureml_pipeline.config import JobConfig, KedroAzureMLConfig, PipelineFilterOptions
+
+        config = MagicMock(spec=KedroAzureMLConfig)
+        job = JobConfig(pipeline=PipelineFilterOptions(pipeline_name="p"))
+        assert _notification_for(config, job) is None
+
+    def test_resolves_named_definition(self):
+        from kedro_azureml_pipeline.config import (
+            JobConfig,
+            KedroAzureMLConfig,
+            NotificationConfig,
+            PipelineFilterOptions,
+        )
+
+        definition = NotificationConfig(webhook_env="X", events=["failure"])
+        config = MagicMock(spec=KedroAzureMLConfig)
+        config.notifications = {"alerts": definition}
+        job = JobConfig(pipeline=PipelineFilterOptions(pipeline_name="p"), notifications="alerts")
+        assert _notification_for(config, job) is definition

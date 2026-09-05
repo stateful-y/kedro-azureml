@@ -9,6 +9,7 @@ workspace:             # required
 compute:               # required
 execution:             # optional
 schedules:             # optional
+notifications:         # optional
 jobs:                  # optional
 ```
 
@@ -156,6 +157,35 @@ Each schedule entry has exactly one of `cron` or `recurrence`. See [Schedule pip
 
 ---
 
+## `notifications`
+
+Reusable named webhook notification definitions. Jobs reference them by name, and the plugin then posts one `start`, one `success`, and one `failure` message per run of the job, whoever submitted it and however many steps it has.
+
+```yaml
+notifications:
+  alerts:
+    webhook_env: SLACK_WEBHOOK_URL
+    events: [start, success, failure]
+    payload: my_project.notifications:build_payload
+    wait_timeout: 900
+```
+
+| Field | Default | Description |
+|---|---|---|
+| `webhook_env` | required | Name of the environment variable, inside the step, that holds the webhook URL. The URL itself never appears in configuration |
+| `events` | required | Events to report: any non-empty subset of `start`, `success`, `failure` |
+| `payload` | `null` | `module.path:function_name` reference to a payload builder called with a [`NotificationEvent`][kedro_azureml_pipeline.hooks.NotificationEvent]; `null` posts a plain `{"text": ...}` payload |
+| `wait_timeout` | `1800` | Seconds the outcome step waits for the job's other leaf steps before posting an outcome-unknown message instead of `success` |
+
+The field is named `events` rather than `on` because YAML 1.1 reads a bare `on` key as the boolean true.
+
+Two rules are checked when the configuration loads or the job compiles:
+
+- When the referencing job declares `limits.timeout`, `wait_timeout` must be **below** it. The outcome step's wait counts against its own step budget, and a step cancelled mid-wait posts nothing.
+- A job that enables `success` on a pipeline with **more than one leaf node** must declare an `experiment_name` and run with the plugin's `mlflow` extra installed. The outcome step identifies its sibling leaves through the MLflow run tags the [MLflow integration](../how-to/use-mlflow.md) writes, and only an experiment name activates that integration.
+
+See [Notify on run outcomes](../how-to/notify-on-run-outcomes.md) for the end-to-end setup and the exact once-per-job rules.
+
 ## `jobs`
 
 Named job definitions. Each job maps a Kedro pipeline to an Azure ML pipeline submission.
@@ -189,6 +219,7 @@ jobs:
 | `params` | `null` | Job-scoped runtime parameters merged into the pipeline on `compile`, `run`, and `schedule` (see below) |
 | `limits` | `null` | Run-duration limits applied to every step in the job (see below) |
 | `description` | `null` | Human-readable job description |
+| `notifications` | `null` | Name of a [`notifications`](#notifications) definition whose webhook receives this job's run events |
 
 ### `params`
 
@@ -233,8 +264,8 @@ jobs:
 
 `{placeholder}` (factory) and `${...}` (OmegaConf) use different syntax and coexist. The namespace alone identifies the job, so no `tags` filter is needed. Job names use the namespace form of each placeholder verbatim (so `europe.lgbm` yields `europe-lgbm-inference`).
 
-* **`kedro azureml run -j <name>`** renders all bindings (overlaying literal jobs) and looks the requested name up; an unknown name is an error listing the available jobs.
-* **`kedro azureml resolve-patterns`** lists every derived job (see the [CLI reference](cli.md)), which is how you discover the names to pass to `-j`.
+- **`kedro azureml run -j <name>`** renders all bindings (overlaying literal jobs) and looks the requested name up; an unknown name is an error listing the available jobs.
+- **`kedro azureml resolve-patterns`** lists every derived job (see the [CLI reference](cli.md)), which is how you discover the names to pass to `-j`.
 
 There is no separate target list or provider key: the jobs are always derived from the pipeline namespaces, so adding a variant to your pipelines yields its job with no config edit.
 
@@ -283,3 +314,7 @@ The following environment variables are set automatically by the plugin during r
 | Variable | Set by | Description |
 |---|---|---|
 | `KEDRO_AZUREML_MLFLOW_ENABLED` | Pipeline generator | Set to `"1"` on each step during remote execution to activate [MLflow integration](../how-to/use-mlflow.md) |
+| `KEDRO_AZUREML_NOTIFY` | Pipeline generator | JSON of the job's resolved [`notifications`](#notifications) definition plus job name, display name, and pipeline name, on every step of a job that references one |
+| `KEDRO_AZUREML_NOTIFY_START` | Pipeline generator | Set to `"1"` on the one root step that posts `start` |
+| `KEDRO_AZUREML_NOTIFY_OUTCOME` | Pipeline generator | Set to `"1"` on the one leaf step that posts the outcome |
+| `KEDRO_AZUREML_NOTIFY_SIBLINGS` | Pipeline generator | Comma-separated names of the other leaf nodes the outcome step waits for |

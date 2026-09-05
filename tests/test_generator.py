@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from unittest.mock import MagicMock, patch
@@ -6,19 +7,26 @@ import pytest
 from azure.ai.ml.entities import Environment, Job
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
+from kedro.pipeline import node, pipeline
 
-from kedro_azureml_pipeline.config import ClusterConfig, LimitsConfig
+from kedro_azureml_pipeline.config import ClusterConfig, LimitsConfig, NotificationConfig
 from kedro_azureml_pipeline.constants import (
     KEDRO_AZUREML_MLFLOW_ENABLED,
     KEDRO_AZUREML_MLFLOW_EXPERIMENT_NAME,
     KEDRO_AZUREML_MLFLOW_NODE_NAME,
     KEDRO_AZUREML_MLFLOW_RUN_NAME,
+    KEDRO_AZUREML_NOTIFY,
+    KEDRO_AZUREML_NOTIFY_OUTCOME,
+    KEDRO_AZUREML_NOTIFY_SIBLINGS,
+    KEDRO_AZUREML_NOTIFY_START,
 )
 from kedro_azureml_pipeline.generator import (
     EXIT_CLASSIFICATION_SUFFIX,
     AzureMLPipelineGenerator,
     ConfigException,
+    NotificationRoles,
 )
+from tests.utils import identity
 
 
 class TestPipelineGeneration:
@@ -864,3 +872,108 @@ class TestCodeReference:
         dummy_plugin_config.execution.code_directory = None
         az_pipeline = self._generate(dummy_pipeline, dummy_plugin_config, multi_catalog)
         assert all(step.component.code is None for step in az_pipeline.jobs.values())
+
+
+def _notified_generator(kedro_pipeline, config, catalog, events, experiment_name="exp"):
+    """Generator for *kedro_pipeline* with a notification definition on job ``job-a``."""
+    with patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=kedro_pipeline):
+        generator = AzureMLPipelineGenerator(
+            "p",
+            "unit_test_env",
+            config,
+            {},
+            catalog=catalog,
+            experiment_name=experiment_name,
+            notification_config=NotificationConfig(webhook_env="HOOK_URL", events=list(events), wait_timeout=120),
+            job_name="job-a",
+            display_name="Job A",
+        )
+        return generator, generator.generate()
+
+
+def _three_leaf_pipeline():
+    """One root fanning out to three leaves."""
+    return pipeline([
+        node(identity, inputs="input_data", outputs="i2", name="root"),
+        node(identity, inputs="i2", outputs="leaf_b_out", name="leaf_b"),
+        node(identity, inputs="i2", outputs="leaf_a_out", name="leaf_a"),
+        node(identity, inputs="i2", outputs="leaf_c_out", name="leaf_c"),
+    ])
+
+
+class TestNotificationStamping:
+    """Announcer and poster designation and the stamped environment."""
+
+    def test_single_leaf_pipeline(self, dummy_pipeline, dummy_plugin_config, multi_catalog):
+        generator, job = _notified_generator(dummy_pipeline, dummy_plugin_config, multi_catalog, ["start", "success"])
+        assert generator.notification_roles(dummy_pipeline) == NotificationRoles("node1", "node3", ())
+        steps = job.jobs
+        for step in steps.values():
+            definition = json.loads(step.environment_variables[KEDRO_AZUREML_NOTIFY])
+            assert definition["job_name"] == "job-a"
+            assert definition["display_name"] == "Job A"
+            assert definition["pipeline_name"] == "p"
+            assert definition["events"] == ["start", "success"]
+            assert definition["webhook_env"] == "HOOK_URL"
+            assert definition["wait_timeout"] == 120
+        assert steps["node1"].environment_variables[KEDRO_AZUREML_NOTIFY_START] == "1"
+        assert KEDRO_AZUREML_NOTIFY_START not in steps["node2"].environment_variables
+        assert KEDRO_AZUREML_NOTIFY_START not in steps["node3"].environment_variables
+        assert steps["node3"].environment_variables[KEDRO_AZUREML_NOTIFY_OUTCOME] == "1"
+        assert steps["node3"].environment_variables[KEDRO_AZUREML_NOTIFY_SIBLINGS] == ""
+        assert KEDRO_AZUREML_NOTIFY_OUTCOME not in steps["node1"].environment_variables
+
+    def test_multi_leaf_pipeline_has_one_poster_with_siblings(self, dummy_plugin_config, multi_catalog):
+        generator, job = _notified_generator(_three_leaf_pipeline(), dummy_plugin_config, multi_catalog, ["success"])
+        posters = [
+            name for name, step in job.jobs.items() if KEDRO_AZUREML_NOTIFY_OUTCOME in step.environment_variables
+        ]
+        assert posters == ["leaf_c"]
+        assert job.jobs["leaf_c"].environment_variables[KEDRO_AZUREML_NOTIFY_SIBLINGS] == "leaf_a,leaf_b"
+        assert job.jobs["root"].environment_variables[KEDRO_AZUREML_NOTIFY_START] == "1"
+
+    def test_single_node_pipeline_carries_both_markers(self, dummy_plugin_config, multi_catalog):
+        single = pipeline([node(identity, inputs="input_data", outputs="output_data", name="only")])
+        _, job = _notified_generator(single, dummy_plugin_config, multi_catalog, ["start", "success", "failure"])
+        env = job.jobs["only"].environment_variables
+        assert env[KEDRO_AZUREML_NOTIFY_START] == "1"
+        assert env[KEDRO_AZUREML_NOTIFY_OUTCOME] == "1"
+        assert env[KEDRO_AZUREML_NOTIFY_SIBLINGS] == ""
+
+    def test_job_without_notifications_stamps_nothing(self, dummy_pipeline, dummy_plugin_config, multi_catalog):
+        with patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline):
+            generator = AzureMLPipelineGenerator("p", "unit_test_env", dummy_plugin_config, {}, catalog=multi_catalog)
+            assert generator.notification_roles(dummy_pipeline) is None
+            for step in generator.generate().jobs.values():
+                assert not any(key.startswith("KEDRO_AZUREML_NOTIFY") for key in step.environment_variables)
+
+    def test_designation_is_stable(self, dummy_plugin_config, multi_catalog):
+        first, _ = _notified_generator(_three_leaf_pipeline(), dummy_plugin_config, multi_catalog, ["success"])
+        second, _ = _notified_generator(_three_leaf_pipeline(), dummy_plugin_config, multi_catalog, ["success"])
+        assert first.notification_roles(_three_leaf_pipeline()) == second.notification_roles(_three_leaf_pipeline())
+
+    def test_multi_leaf_success_without_experiment_name_fails(self, dummy_plugin_config, multi_catalog):
+        with pytest.raises(ConfigException, match="Job 'job-a' enables the 'success' notification.*3 leaf nodes"):
+            _notified_generator(
+                _three_leaf_pipeline(), dummy_plugin_config, multi_catalog, ["success"], experiment_name=None
+            )
+
+    def test_multi_leaf_failure_only_without_experiment_name_passes(self, dummy_plugin_config, multi_catalog):
+        _, job = _notified_generator(
+            _three_leaf_pipeline(), dummy_plugin_config, multi_catalog, ["failure"], experiment_name=None
+        )
+        assert len(job.jobs) == 4
+
+    def test_display_name_defaults_to_job_name(self, dummy_pipeline, dummy_plugin_config, multi_catalog):
+        with patch.object(AzureMLPipelineGenerator, "get_kedro_pipeline", return_value=dummy_pipeline):
+            generator = AzureMLPipelineGenerator(
+                "p",
+                "unit_test_env",
+                dummy_plugin_config,
+                {},
+                catalog=multi_catalog,
+                notification_config=NotificationConfig(webhook_env="HOOK_URL", events=["failure"]),
+                job_name="job-a",
+            )
+            definition = json.loads(generator.generate().jobs["node1"].environment_variables[KEDRO_AZUREML_NOTIFY])
+        assert definition["display_name"] == "job-a"

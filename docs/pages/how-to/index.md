@@ -17,6 +17,7 @@ How-to guides are task-oriented recipes for users who already have the plugin in
 - [**Configure Multiple Workspaces**](configure-multiple-workspaces.md): Target dev, staging, and production workspaces from a single configuration.
 - [**Build a Custom Environment**](build-custom-environment.md): Create and register an Azure ML environment with your project's dependencies.
 - [**Deploy from CI/CD**](deploy-from-cicd.md): Submit pipeline jobs from GitHub Action or other CI/CD systems.
+- [**Notify on Run Outcomes**](notify-on-run-outcomes.md): Post one start, success, or failure message per job run to a Slack or other webhook, for scheduled runs too.
 
 ## Operations
 

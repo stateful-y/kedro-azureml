@@ -15,6 +15,7 @@ from kedro_azureml_pipeline.config import (
     JobConfig,
     KedroAzureMLConfig,
     LimitsConfig,
+    NotificationConfig,
     PipelineFilterOptions,
     RecurrencePatternConfig,
     RecurrenceScheduleConfig,
@@ -400,3 +401,125 @@ class TestScheduleConfigProperty:
         """ScheduleConfig with cron accepts arbitrary expression strings."""
         sc = ScheduleConfig(cron=CronScheduleConfig(expression=expression))
         assert sc.cron.expression == expression
+
+
+def _config_with_notifications(notifications: dict, jobs: dict) -> dict:
+    """Minimal ``azureml.yml`` mapping with the given notifications and jobs."""
+    return {
+        "workspace": {"__default__": {"subscription_id": "s", "resource_group": "r", "name": "n"}},
+        "compute": {"__default__": {"cluster_name": "c"}},
+        "notifications": notifications,
+        "jobs": jobs,
+    }
+
+
+class TestNotificationConfig:
+    """Webhook notification definitions and their job references."""
+
+    def test_minimal_definition_defaults(self):
+        cfg = NotificationConfig(webhook_env="SLACK_WEBHOOK_URL", events=["failure"])
+        assert cfg.payload is None
+        assert cfg.wait_timeout == 1800
+
+    def test_explicit_none_payload_accepted(self):
+        assert NotificationConfig(webhook_env="X", events=["failure"], payload=None).payload is None
+
+    def test_payload_reference_accepted(self):
+        cfg = NotificationConfig(webhook_env="X", events=["start"], payload="pkg.mod:build")
+        assert cfg.payload == "pkg.mod:build"
+
+    @pytest.mark.parametrize("payload", ["nocolon", ":build", "pkg.mod:"])
+    def test_payload_reference_shape_enforced(self, payload):
+        with pytest.raises(ValidationError, match="module.path:function_name"):
+            NotificationConfig(webhook_env="X", events=["start"], payload=payload)
+
+    def test_invalid_event_rejected(self):
+        with pytest.raises(ValidationError, match="'start', 'success' or 'failure'"):
+            NotificationConfig(webhook_env="X", events=["bogus"])
+
+    def test_empty_events_rejected(self):
+        with pytest.raises(ValidationError, match="at least 1"):
+            NotificationConfig(webhook_env="X", events=[])
+
+    def test_unknown_field_rejected(self):
+        with pytest.raises(ValidationError):
+            NotificationConfig(webhook_env="X", events=["start"], channel="#ops")
+
+    def test_yaml_events_key_is_not_a_boolean(self):
+        """``events`` was chosen over ``on`` because YAML 1.1 reads a bare ``on`` as true."""
+        parsed = yaml.safe_load("events: [start, failure]\nwebhook_env: X")
+        assert NotificationConfig.model_validate(parsed).events == ["start", "failure"]
+
+    def test_job_reference_resolves(self):
+        cfg = KedroAzureMLConfig.model_validate(
+            _config_with_notifications(
+                {"alerts": {"webhook_env": "SLACK_WEBHOOK_URL", "events": ["start", "failure"]}},
+                {
+                    "nightly": {
+                        "pipeline": {"pipeline_name": "p"},
+                        "notifications": "alerts",
+                        "limits": {"timeout": 3600},
+                    }
+                },
+            )
+        )
+        assert cfg.jobs["nightly"].notifications == "alerts"
+        assert cfg.notifications["alerts"].events == ["start", "failure"]
+
+    def test_unknown_reference_rejected(self):
+        with pytest.raises(ValidationError, match="Job 'nightly' references notification 'nope'"):
+            KedroAzureMLConfig.model_validate(
+                _config_with_notifications(
+                    {}, {"nightly": {"pipeline": {"pipeline_name": "p"}, "notifications": "nope"}}
+                )
+            )
+
+    def test_wait_timeout_equal_to_step_timeout_rejected(self):
+        with pytest.raises(
+            ValidationError, match=r"wait_timeout \(1800s\) must be below the job's limits.timeout \(1800s\)"
+        ):
+            KedroAzureMLConfig.model_validate(
+                _config_with_notifications(
+                    {"alerts": {"webhook_env": "X", "events": ["success"]}},
+                    {
+                        "nightly": {
+                            "pipeline": {"pipeline_name": "p"},
+                            "notifications": "alerts",
+                            "limits": {"timeout": 1800},
+                        }
+                    },
+                )
+            )
+
+    def test_wait_timeout_below_step_timeout_accepted(self):
+        cfg = KedroAzureMLConfig.model_validate(
+            _config_with_notifications(
+                {"alerts": {"webhook_env": "X", "events": ["success"], "wait_timeout": 600}},
+                {
+                    "nightly": {
+                        "pipeline": {"pipeline_name": "p"},
+                        "notifications": "alerts",
+                        "limits": {"timeout": 601},
+                    }
+                },
+            )
+        )
+        assert cfg.notifications["alerts"].wait_timeout == 600
+
+    def test_no_step_timeout_accepts_any_wait(self):
+        cfg = KedroAzureMLConfig.model_validate(
+            _config_with_notifications(
+                {"alerts": {"webhook_env": "X", "events": ["success"], "wait_timeout": 99999}},
+                {"nightly": {"pipeline": {"pipeline_name": "p"}, "notifications": "alerts"}},
+            )
+        )
+        assert cfg.jobs["nightly"].limits is None
+
+    def test_job_without_reference_ignores_definitions(self):
+        cfg = KedroAzureMLConfig.model_validate(
+            _config_with_notifications(
+                {"alerts": {"webhook_env": "X", "events": ["success"]}},
+                {"nightly": {"pipeline": {"pipeline_name": "p"}}},
+            )
+        )
+        assert cfg.jobs["nightly"].notifications is None

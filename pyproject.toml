@@ -42,6 +42,7 @@ azureml = "kedro_azureml_pipeline.cli.commands:commands"
 [project.entry-points."kedro.hooks"]
 azure_local_run_hook = "kedro_azureml_pipeline.hooks.local_run:azureml_local_run_hook"
 mlflow_azureml_hook = "kedro_azureml_pipeline.hooks.mlflow:mlflow_azureml_hook"
+notify_hook = "kedro_azureml_pipeline.hooks.notify:notify_hook"
 
 [dependency-groups]
 dev = [
