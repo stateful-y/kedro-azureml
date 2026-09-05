@@ -16,6 +16,7 @@ from kedro_azureml_pipeline.cli.functions import (
     delete_schedules,
     dynamic_import_job_schedule_func_from_str,
     list_patterns,
+    parse_display_name_overrides,
     parse_extra_env_params,
     parse_runtime_params,
     resolve_patterns,
@@ -246,6 +247,16 @@ def compile(
         "For jobs that do not depend on each other: disables the fail-fast ordering."
     ),
 )
+@click.option(
+    "--display-name",
+    "display_name",
+    type=str,
+    multiple=True,
+    help=(
+        "Override one selected job's display name (and MLflow run name), format: JOB=NAME. "
+        "Repeatable, one entry per job."
+    ),
+)
 @click.pass_obj
 @click.pass_context
 def run(
@@ -261,6 +272,7 @@ def run(
     wait_for_completion: bool,
     on_job_scheduled: Callable | None,
     concurrent: bool,
+    display_name: tuple[str],
 ):
     """Run named jobs immediately on Azure ML.
 
@@ -269,6 +281,7 @@ def run(
     """
     if concurrent and wait_for_completion:
         raise click.UsageError("--concurrent and --wait-for-completion are mutually exclusive.")
+    display_names = parse_display_name_overrides(display_name, job_names)
 
     params = json.dumps(p) if (p := parse_runtime_params(params)) else ""
 
@@ -295,6 +308,7 @@ def run(
         on_job_scheduled=on_job_scheduled,
         workspace_override=workspace_name,
         concurrent=concurrent,
+        display_names=display_names,
     )
 
     if is_ok:

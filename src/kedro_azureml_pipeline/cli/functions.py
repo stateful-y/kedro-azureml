@@ -202,6 +202,42 @@ def parse_extra_env_params(extra_env):
     return {(e := entry.split("=", maxsplit=1))[0]: e[1] for entry in extra_env}
 
 
+def parse_display_name_overrides(entries, job_names) -> dict[str, str]:
+    """Parse ``JOB=NAME`` display name overrides against the selected jobs.
+
+    Parameters
+    ----------
+    entries : iterable of str
+        Strings in ``JOB=NAME`` format; the split is on the first ``=`` so a
+        name may itself contain ``=``.
+    job_names : iterable of str
+        The jobs selected for this invocation. Every override must name one
+        of them: a misspelled job would otherwise leave that job silently
+        unrenamed.
+
+    Returns
+    -------
+    dict of str to str
+        Mapping of job names to their display names.
+
+    Raises
+    ------
+    click.UsageError
+        If an entry has no ``=``, has an empty job or name half, or names a
+        job outside *job_names*.
+    """
+    selected = set(job_names)
+    overrides: dict[str, str] = {}
+    for entry in entries:
+        job, sep, name = entry.partition("=")
+        if not sep or not job or not name:
+            raise click.UsageError(f"Invalid --display-name: {entry!r}, expected format: JOB=NAME")
+        if job not in selected:
+            raise click.UsageError(f"--display-name names job {job!r}, which is not among the selected -j jobs")
+        overrides[job] = name
+    return overrides
+
+
 def dynamic_import_job_schedule_func_from_str(
     ctx: click.Context,
     param: click.Parameter,
@@ -421,6 +457,7 @@ def _prepare_jobs(
     job_names: list[str] | None,
     workspace_override: str | None = None,
     code_resolver: "Callable[[KedroAzureMLConfig, WorkspaceConfig], str | None] | None" = None,
+    display_names: dict[str, str] | None = None,
 ):
     """Context manager that loads config, validates jobs, and generates pipelines.
 
@@ -445,6 +482,10 @@ def _prepare_jobs(
         before that job is generated; its result becomes the ``code`` of
         every step. ``None`` leaves each step on ``execution.code_directory``,
         which is what compile-only commands want.
+    display_names : dict of str to str or None
+        Per-job display name overrides. A job named here is submitted under
+        that name (pipeline display name and MLflow run name both); the rest
+        keep their configured ``display_name``.
 
     Yields
     ------
@@ -476,7 +517,8 @@ def _prepare_jobs(
         prepared: dict[str, tuple] = {}
         for job_name, job_config in selected_jobs.items():
             job_experiment_name = job_config.experiment_name or default_experiment_name
-            mlflow_run_name = job_config.display_name or job_name
+            display_name = (display_names or {}).get(job_name) or job_config.display_name
+            mlflow_run_name = display_name or job_name
 
             code = None
             if code_resolver is not None:
@@ -502,8 +544,8 @@ def _prepare_jobs(
             )
             pipeline_job = generator.generate()
 
-            if job_config.display_name:
-                pipeline_job.display_name = job_config.display_name
+            if display_name:
+                pipeline_job.display_name = display_name
 
             prepared[job_name] = (job_experiment_name, pipeline_job, job_config)
 
@@ -522,6 +564,7 @@ def run_jobs(
     on_job_scheduled: Callable | None = None,
     workspace_override: str | None = None,
     concurrent: bool = False,
+    display_names: dict[str, str] | None = None,
 ):
     """Run jobs immediately, ignoring any configured schedule.
 
@@ -551,6 +594,10 @@ def run_jobs(
         Submit the jobs from a pool of ``CONCURRENT_SUBMIT_WORKERS`` threads
         and attempt every one of them. The default submits in order and
         stops at the first failure, which dependent chains rely on.
+    display_names : dict of str to str or None
+        Per-job display name overrides, as parsed by
+        :func:`parse_display_name_overrides`. Lets one invocation submit jobs
+        from a shared factory under distinct names.
 
     Returns
     -------
@@ -565,7 +612,15 @@ def run_jobs(
         code_resolver = None if dry_run else SnapshotRegistrar(stack, clients)
 
         with _prepare_jobs(
-            ctx, aml_env, params, extra_env, load_versions, job_names, workspace_override, code_resolver
+            ctx,
+            aml_env,
+            params,
+            extra_env,
+            load_versions,
+            job_names,
+            workspace_override,
+            code_resolver,
+            display_names=display_names,
         ) as (config, selected_jobs, prepared):
             job_order = list(selected_jobs)
 
@@ -577,8 +632,11 @@ def run_jobs(
                     pipeline_opts = job_config.pipeline
 
                     if dry_run:
+                        # The display name is what the studio and MLflow will show, so
+                        # a caller can check a computed override before submitting.
                         click.echo(
                             f"[DRY RUN] Would run job '{job_name}' immediately "
+                            f"as '{pipeline_job.display_name or job_name}' "
                             f"(pipeline '{pipeline_opts.pipeline_name}')"
                         )
                         return True
