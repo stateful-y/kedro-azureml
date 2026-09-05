@@ -79,6 +79,13 @@ def submit_env(patched_kedro_package, dummy_pipeline, dummy_plugin_config, cli_c
     ):
         ml_client = ml_client_cls.return_value
         ml_client._code.create_or_update.return_value = _registered(CODE_ID)
+        # The pool threads format cluster attributes and echo str(job.studio_url)
+        # concurrently; MagicMock creates those children lazily and can race,
+        # so every value the client stringifies is a plain string or int here.
+        ml_client.compute.get.return_value = SimpleNamespace(
+            name="cpu-cluster", size="Standard_DS3_v2", min_instances=0, max_instances=4
+        )
+        ml_client.jobs.create_or_update.return_value.studio_url = "https://ml.azure.com/runs/test"
         yield SimpleNamespace(
             config=dummy_plugin_config,
             ctx=cli_context,
