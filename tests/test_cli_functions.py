@@ -292,13 +292,10 @@ class TestParseDisplayNameOverrides:
     def test_empty_list(self):
         assert parse_display_name_overrides([], ["a"]) == {}
 
-    def test_missing_equals_is_a_usage_error(self):
+    @pytest.mark.parametrize("entry", ["a-custom", "a=", "=x"])
+    def test_a_malformed_entry_is_a_usage_error(self, entry):
         with pytest.raises(click.UsageError, match="JOB=NAME"):
-            parse_display_name_overrides(["a-custom"], ["a"])
-
-    def test_empty_name_is_a_usage_error(self):
-        with pytest.raises(click.UsageError, match="JOB=NAME"):
-            parse_display_name_overrides(["a="], ["a"])
+            parse_display_name_overrides([entry], ["a"])
 
     def test_unselected_job_is_a_usage_error(self):
         with pytest.raises(click.UsageError, match="not among the selected"):

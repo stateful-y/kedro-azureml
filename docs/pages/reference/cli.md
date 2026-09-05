@@ -88,7 +88,7 @@ When the jobs in a batch do not depend on each other (for example one backtest p
 
 A job's `display_name` in `azureml.yml` is one template per job, resolved once per invocation. When a caller needs distinct names for jobs submitted together (for example an attempt number computed per job before submit), pass `--display-name JOB=NAME` once per job. The override replaces both the Azure ML pipeline job's display name and the MLflow root run name for that job; jobs without an override keep their configured name. The value is split on the first `=`, so `NAME` may contain `=`.
 
-Every `JOB` must be among the `-j` jobs of the same invocation; an unknown job or an entry without `=` is a usage error, raised before any job is prepared or any code is staged. `--dry-run` prints each job's display name next to its job name, so a computed override can be checked without submitting. The `schedule` and `compile` commands do not take this option.
+Every `JOB` must be among the `-j` jobs of the same invocation; an unknown job, an entry without `=`, or an entry whose job or name half is empty is a usage error, raised before any job is prepared or any code is staged. `--dry-run` prints each job's display name next to its job name, so a computed override can be checked without submitting. The `schedule` and `compile` commands do not take this option.
 
 ---
 

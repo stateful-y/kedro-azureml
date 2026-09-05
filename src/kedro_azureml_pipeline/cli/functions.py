@@ -223,7 +223,8 @@ def parse_display_name_overrides(entries, job_names) -> dict[str, str]:
     Raises
     ------
     click.UsageError
-        If an entry has no ``=`` or names a job outside *job_names*.
+        If an entry has no ``=``, has an empty job or name half, or names a
+        job outside *job_names*.
     """
     selected = set(job_names)
     overrides: dict[str, str] = {}
