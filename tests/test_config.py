@@ -443,7 +443,25 @@ class TestNotificationConfig:
 
     def test_unknown_field_rejected(self):
         with pytest.raises(ValidationError):
-            NotificationConfig(webhook_env="X", events=["start"], channel="#ops")
+            NotificationConfig(webhook_env="X", events=["start"], icon=":bell:")
+
+    def test_slack_api_transport_needs_no_webhook(self):
+        cfg = NotificationConfig(token_env="SLACK_BOT_TOKEN", channel="C0123456789", events=["start"])
+        assert cfg.webhook_env is None
+        assert cfg.model_dump()["channel"] == "C0123456789"
+
+    def test_both_transports_accepted(self):
+        cfg = NotificationConfig(webhook_env="X", token_env="T", channel="C1", events=["start"])
+        assert (cfg.webhook_env, cfg.token_env, cfg.channel) == ("X", "T", "C1")
+
+    @pytest.mark.parametrize("extra", [{"token_env": "T"}, {"channel": "C1"}])
+    def test_token_and_channel_go_together(self, extra):
+        with pytest.raises(ValidationError, match="token_env and channel must be set together"):
+            NotificationConfig(webhook_env="X", events=["start"], **extra)
+
+    def test_no_transport_rejected(self):
+        with pytest.raises(ValidationError, match="webhook_env, or token_env with channel"):
+            NotificationConfig(events=["start"])
 
     def test_yaml_events_key_is_not_a_boolean(self):
         """``events`` was chosen over ``on`` because YAML 1.1 reads a bare ``on`` as true."""

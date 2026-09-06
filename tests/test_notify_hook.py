@@ -17,6 +17,8 @@ from kedro_azureml_pipeline.constants import (
     KEDRO_AZUREML_NOTIFY_START,
 )
 from kedro_azureml_pipeline.hooks.notify import (
+    SLACK_POST_MESSAGE_URL,
+    THREAD_TAG,
     NotificationEvent,
     NotificationHook,
     SiblingOutcome,
@@ -26,6 +28,9 @@ from kedro_azureml_pipeline.hooks.notify import (
 
 WEBHOOK_VAR = "HOOK_URL"
 WEBHOOK_URL = "https://hooks.example.test/services/secret-token"
+TOKEN_VAR = "BOT_TOKEN"
+TOKEN = "xoxb-secret-bot-token"
+CHANNEL = "C0123456789"
 ENV_VARS = [
     KEDRO_AZUREML_NOTIFY,
     KEDRO_AZUREML_NOTIFY_START,
@@ -41,6 +46,7 @@ ENV_VARS = [
     "AZUREML_ARM_RESOURCEGROUP",
     "AZUREML_ARM_WORKSPACE_NAME",
     WEBHOOK_VAR,
+    TOKEN_VAR,
 ]
 IDENTIFIERS = {
     "AZUREML_RUN_ID": "step-1",
@@ -71,10 +77,18 @@ def stamp(
     start=False,
     poster=False,
     siblings="",
+    api=False,
+    webhook=True,
 ):
-    """Put the generator's stamped definition and markers into the environment."""
+    """Put the generator's stamped definition and markers into the environment.
+
+    ``api=True`` names the Slack API transport and puts the token in the
+    environment; ``webhook=False`` leaves the webhook out of the definition.
+    """
     os.environ[KEDRO_AZUREML_NOTIFY] = json.dumps({
-        "webhook_env": WEBHOOK_VAR,
+        "webhook_env": WEBHOOK_VAR if webhook else None,
+        "token_env": TOKEN_VAR if api else None,
+        "channel": CHANNEL if api else None,
         "events": list(events),
         "payload": payload,
         "wait_timeout": wait_timeout,
@@ -84,6 +98,8 @@ def stamp(
     })
     os.environ["KEDRO_ENV"] = "prod"
     os.environ[WEBHOOK_VAR] = WEBHOOK_URL
+    if api:
+        os.environ[TOKEN_VAR] = TOKEN
     os.environ.update(IDENTIFIERS)
     if start:
         os.environ[KEDRO_AZUREML_NOTIFY_START] = "1"
@@ -102,17 +118,39 @@ def hook():
     return h
 
 
+class _Posts(list):
+    """A list of posts with the attributes the ``urlopen`` fixture sets."""
+
+
 @pytest.fixture
 def urlopen():
-    """Capture every webhook post as ``(url, body)``."""
-    posts = []
+    """Capture every post as ``(url, body, timeout)``; the response body is ``posts.reply``."""
+    posts = _Posts()
+    posts.reply = b"ok"
+    posts.headers = []
 
     def fake(request, timeout):
         posts.append((request.full_url, json.loads(request.data.decode("utf-8")), timeout))
-        return MagicMock()
+        posts.headers.append(dict(request.header_items()))
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = posts.reply
+        return response
 
     with patch("kedro_azureml_pipeline.hooks.notify.urllib.request.urlopen", side_effect=fake):
         yield posts
+
+
+@pytest.fixture
+def slack(monkeypatch):
+    """A fake ``mlflow`` module whose client stores tags per run, patched into the hook's imports."""
+    tags: dict[str, dict[str, str]] = {}
+    mock = MagicMock()
+    client = mock.MlflowClient.return_value
+    client.set_tag.side_effect = lambda run_id, key, value: tags.setdefault(run_id, {}).__setitem__(key, value)
+    client.get_run.side_effect = lambda run_id: SimpleNamespace(data=SimpleNamespace(tags=dict(tags.get(run_id, {}))))
+    monkeypatch.setitem(__import__("sys").modules, "mlflow", mock)
+    mock.tags = tags
+    return mock
 
 
 def _run(name, status, tags=None):
@@ -342,6 +380,154 @@ class TestPosting:
             hook.before_pipeline_run()
         assert "posted the 'start' notification for job job-a" in caplog.text
         assert "secret-token" not in caplog.text
+
+
+class TestSlackApi:
+    """The Slack API transport: bearer posts, a thread per run, webhook fallback."""
+
+    def test_start_posts_to_chat_post_message_with_bearer_token(self, hook, urlopen, slack):
+        stamp(start=True, api=True)
+        urlopen.reply = b'{"ok": true, "ts": "1700000000.000100"}'
+        hook.before_pipeline_run()
+        (url, body, timeout) = urlopen[0]
+        headers = urlopen.headers[0]
+        assert url == SLACK_POST_MESSAGE_URL
+        assert body["channel"] == CHANNEL
+        assert body["text"].startswith("[start] Job A")
+        assert "thread_ts" not in body
+        assert headers["Authorization"] == f"Bearer {TOKEN}"
+        assert timeout == 10
+
+    def test_start_records_the_thread_on_the_root_run(self, hook, urlopen, slack):
+        stamp(start=True, api=True)
+        urlopen.reply = b'{"ok": true, "ts": "1700000000.000100"}'
+        hook.before_pipeline_run()
+        assert slack.tags == {"root-1": {THREAD_TAG: "1700000000.000100"}}
+
+    def test_outcome_replies_in_the_thread_and_broadcasts(self, hook, urlopen, slack):
+        stamp(poster=True, api=True)
+        slack.tags["root-1"] = {THREAD_TAG: "1700000000.000100"}
+        urlopen.reply = b'{"ok": true, "ts": "1700000000.000200"}'
+        hook.before_pipeline_run()
+        hook.after_pipeline_run()
+        (_, body, _) = urlopen[-1]
+        assert body["thread_ts"] == "1700000000.000100"
+        assert body["reply_broadcast"] is True
+        assert body["text"].startswith("[success] Job A")
+        assert slack.tags["root-1"] == {THREAD_TAG: "1700000000.000100"}, "outcomes never rewrite the thread"
+
+    def test_failure_replies_in_the_thread(self, hook, urlopen, slack):
+        stamp(api=True)
+        slack.tags["root-1"] = {THREAD_TAG: "1700000000.000100"}
+        urlopen.reply = b'{"ok": true}'
+        hook.before_pipeline_run()
+        hook.on_pipeline_error(RuntimeError("boom"))
+        assert urlopen[-1][1]["thread_ts"] == "1700000000.000100"
+
+    def test_outcome_without_a_thread_posts_plainly(self, hook, urlopen, slack):
+        stamp(poster=True, api=True)
+        urlopen.reply = b'{"ok": true}'
+        hook.before_pipeline_run()
+        hook.after_pipeline_run()
+        assert "thread_ts" not in urlopen[-1][1]
+
+    def test_unreadable_thread_posts_plainly_with_warning(self, hook, urlopen, slack, caplog):
+        stamp(poster=True, api=True)
+        slack.MlflowClient.return_value.get_run.side_effect = ConnectionError("down")
+        urlopen.reply = b'{"ok": true}'
+        with caplog.at_level(logging.WARNING):
+            hook.before_pipeline_run()
+            hook.after_pipeline_run()
+        assert "thread_ts" not in urlopen[-1][1]
+        assert "could not read the notification thread: ConnectionError" in caplog.text
+
+    def test_thread_lookup_needs_a_root_run_id(self, hook, urlopen, slack):
+        stamp(poster=True, api=True)
+        del os.environ["AZUREML_ROOT_RUN_ID"]
+        urlopen.reply = b'{"ok": true}'
+        hook.before_pipeline_run()
+        hook.after_pipeline_run()
+        slack.MlflowClient.return_value.get_run.assert_not_called()
+
+    def test_recording_the_thread_needs_a_root_run_id(self, hook, urlopen, slack):
+        stamp(start=True, api=True)
+        del os.environ["AZUREML_ROOT_RUN_ID"]
+        urlopen.reply = b'{"ok": true, "ts": "1"}'
+        hook.before_pipeline_run()
+        assert slack.tags == {}
+
+    def test_start_without_a_timestamp_records_nothing(self, hook, urlopen, slack):
+        stamp(start=True, api=True)
+        urlopen.reply = b'{"ok": true}'
+        hook.before_pipeline_run()
+        assert slack.tags == {}
+
+    def test_unrecordable_thread_is_logged(self, hook, urlopen, slack, caplog):
+        stamp(start=True, api=True)
+        slack.MlflowClient.return_value.set_tag.side_effect = ConnectionError("down")
+        urlopen.reply = b'{"ok": true, "ts": "1"}'
+        with caplog.at_level(logging.WARNING):
+            hook.before_pipeline_run()
+        assert "could not record the notification thread: ConnectionError" in caplog.text
+
+    def test_mlflow_not_installed_posts_without_a_thread(self, hook, urlopen, monkeypatch, caplog):
+        stamp(start=True, api=True)
+        monkeypatch.setitem(__import__("sys").modules, "mlflow", None)
+        urlopen.reply = b'{"ok": true, "ts": "1"}'
+        with caplog.at_level(logging.WARNING):
+            hook.before_pipeline_run()
+        assert len(urlopen) == 1
+        assert "could not record the notification thread: ModuleNotFoundError" in caplog.text
+
+    def test_refusal_is_logged_with_slack_error(self, hook, urlopen, slack, caplog):
+        stamp(start=True, api=True)
+        urlopen.reply = b'{"ok": false, "error": "not_in_channel"}'
+        with caplog.at_level(logging.WARNING):
+            hook.before_pipeline_run()
+        assert "Slack refused the 'start' notification: not_in_channel" in caplog.text
+        assert slack.tags == {}
+        assert TOKEN not in caplog.text
+
+    @pytest.mark.parametrize("reply", [b"not json", b"[1, 2]"])
+    def test_non_object_reply_counts_as_refused(self, hook, urlopen, slack, caplog, reply):
+        stamp(start=True, api=True)
+        urlopen.reply = reply
+        with caplog.at_level(logging.WARNING):
+            hook.before_pipeline_run()
+        assert "Slack refused the 'start' notification: None" in caplog.text
+
+    def test_transport_error_is_logged_without_token(self, hook, slack, caplog):
+        stamp(start=True, api=True)
+        with (
+            patch("kedro_azureml_pipeline.hooks.notify.urllib.request.urlopen", side_effect=TimeoutError("slow")),
+            caplog.at_level(logging.WARNING),
+        ):
+            hook.before_pipeline_run()
+        assert "posting the 'start' notification failed: TimeoutError" in caplog.text
+        assert TOKEN not in caplog.text
+
+    def test_missing_token_falls_back_to_the_webhook(self, hook, urlopen, slack):
+        stamp(start=True, api=True)
+        del os.environ[TOKEN_VAR]
+        hook.before_pipeline_run()
+        assert urlopen[0][0] == WEBHOOK_URL
+        assert "channel" not in urlopen[0][1]
+
+    def test_missing_token_and_no_webhook_names_the_token_variable(self, hook, urlopen, slack, caplog):
+        stamp(start=True, api=True, webhook=False)
+        del os.environ[TOKEN_VAR]
+        with caplog.at_level(logging.WARNING):
+            hook.before_pipeline_run()
+        assert urlopen == []
+        assert f"{TOKEN_VAR} is unset" in caplog.text
+
+    def test_custom_builder_payload_is_sent_with_the_channel(self, hook, urlopen, slack):
+        stamp(start=True, api=True, payload=f"{__name__}:build_blocks")
+        urlopen.reply = b'{"ok": true}'
+        hook.before_pipeline_run()
+        body = urlopen[0][1]
+        assert body["channel"] == CHANNEL
+        assert body["blocks"][0]["text"]["text"] == "start Job A"
 
 
 def build_blocks(event):

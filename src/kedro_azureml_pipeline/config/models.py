@@ -432,7 +432,7 @@ NotificationEventName = Literal["start", "success", "failure"]
 
 
 class NotificationConfig(BaseModel):
-    """Webhook notification for the runs of a job.
+    """Notification for the runs of a job, posted to a webhook or the Slack API.
 
     Referenced by name from a job's ``notifications`` field. The generator stamps
     the definition into every step of the job, and
@@ -441,11 +441,23 @@ class NotificationConfig(BaseModel):
     the step that raised, and one ``success`` message from a designated leaf
     step once every other leaf has finished.
 
+    Two transports exist. A webhook receives the payload as the request body.
+    The Slack API (``token_env`` and ``channel``) posts with ``chat.postMessage``
+    under the app's bot identity, and threads the outcome messages under the
+    ``start`` message of the same run, also sent to the channel. A definition
+    may name both: the API is used when the token is present in the step and
+    the webhook otherwise.
+
     Parameters
     ----------
-    webhook_env : str
+    webhook_env : str or None
         Name of the environment variable, inside the step, that holds the
         webhook URL. The URL itself never appears in configuration.
+    token_env : str or None
+        Name of the environment variable, inside the step, that holds the Slack
+        bot token. Requires ``channel``.
+    channel : str or None
+        Slack channel ID the API posts to. Requires ``token_env``.
     events : list of {"start", "success", "failure"}
         Events to report. At least one. (Named ``events`` rather than ``on``
         because YAML 1.1 reads a bare ``on`` key as the boolean true.)
@@ -467,12 +479,16 @@ class NotificationConfig(BaseModel):
         webhook_env: SLACK_WEBHOOK_URL
         events: [start, success, failure]
         payload: my_project.notifications:build_payload
+      threaded:
+        token_env: SLACK_BOT_TOKEN
+        channel: C0123456789
+        events: [start, success, failure]
 
     jobs:
       nightly:
         pipeline:
           pipeline_name: data_processing
-        notifications: alerts
+        notifications: threaded
     ```
 
     See Also
@@ -483,7 +499,13 @@ class NotificationConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    webhook_env: str = Field(min_length=1, description="Environment variable holding the webhook URL inside the step.")
+    webhook_env: str | None = Field(
+        default=None, min_length=1, description="Environment variable holding the webhook URL inside the step."
+    )
+    token_env: str | None = Field(
+        default=None, min_length=1, description="Environment variable holding the Slack bot token inside the step."
+    )
+    channel: str | None = Field(default=None, min_length=1, description="Slack channel ID the API posts to.")
     events: list[NotificationEventName] = Field(min_length=1, description="Events to report.")
     payload: str | None = Field(
         default=None,
@@ -521,6 +543,27 @@ class NotificationConfig(BaseModel):
         if not module_str or not attr_str:
             raise ValueError("payload must be in 'module.path:function_name' format")
         return value
+
+    @model_validator(mode="after")
+    def _validate_transport(self) -> "NotificationConfig":
+        """Require a webhook or a complete Slack API pair.
+
+        Returns
+        -------
+        NotificationConfig
+            The validated definition.
+
+        Raises
+        ------
+        ValueError
+            If neither transport is configured, or only one of ``token_env``
+            and ``channel`` is set.
+        """
+        if (self.token_env is None) != (self.channel is None):
+            raise ValueError("token_env and channel must be set together")
+        if self.webhook_env is None and self.token_env is None:
+            raise ValueError("a notification needs webhook_env, or token_env with channel")
+        return self
 
 
 class JobConfig(BaseModel):
