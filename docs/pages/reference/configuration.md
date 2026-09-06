@@ -159,7 +159,7 @@ Each schedule entry has exactly one of `cron` or `recurrence`. See [Schedule pip
 
 ## `notifications`
 
-Reusable named webhook notification definitions. Jobs reference them by name, and the plugin then posts one `start`, one `success`, and one `failure` message per run of the job, whoever submitted it and however many steps it has.
+Reusable named notification definitions. Jobs reference them by name, and the plugin then posts one `start`, one `success`, and one `failure` message per run of the job, whoever submitted it and however many steps it has, to a webhook or through the Slack API.
 
 ```yaml
 notifications:
@@ -168,18 +168,27 @@ notifications:
     events: [start, success, failure]
     payload: my_project.notifications:build_payload
     wait_timeout: 900
+  threaded:
+    token_env: SLACK_BOT_TOKEN
+    channel: C0123456789
+    events: [start, success, failure]
+    payload: my_project.notifications:build_payload
 ```
 
 | Field | Default | Description |
 |---|---|---|
-| `webhook_env` | required | Name of the environment variable, inside the step, that holds the webhook URL. The URL itself never appears in configuration |
+| `webhook_env` | `null` | Name of the environment variable, inside the step, that holds the webhook URL. The URL itself never appears in configuration |
+| `token_env` | `null` | Name of the environment variable, inside the step, that holds the Slack bot token. Set together with `channel` |
+| `channel` | `null` | Slack channel ID the API posts to. Set together with `token_env` |
 | `events` | required | Events to report: any non-empty subset of `start`, `success`, `failure` |
 | `payload` | `null` | `module.path:function_name` reference to a payload builder called with a [`NotificationEvent`][kedro_azureml_pipeline.hooks.NotificationEvent]; `null` posts a plain `{"text": ...}` payload |
 | `wait_timeout` | `1800` | Seconds the outcome step waits for the job's other leaf steps before posting an outcome-unknown message instead of `success` |
 
 The field is named `events` rather than `on` because YAML 1.1 reads a bare `on` key as the boolean true.
 
-Two rules are checked when the configuration loads or the job compiles:
+A definition names at least one transport: `webhook_env`, or `token_env` with `channel`. When it names both, a step posts through the API when the token is present in its environment and through the webhook otherwise. The API transport threads the outcome messages under the run's `start` message and also sends them to the channel; see [Notify on run outcomes](../how-to/notify-on-run-outcomes.md#post-through-the-slack-api) for what that requires.
+
+Two more rules are checked when the configuration loads or the job compiles:
 
 - When the referencing job declares `limits.timeout`, `wait_timeout` must be **below** it. The outcome step's wait counts against its own step budget, and a step cancelled mid-wait posts nothing.
 - A job that enables `success` on a pipeline with **more than one leaf node** must declare an `experiment_name` and run with the plugin's `mlflow` extra installed. The outcome step identifies its sibling leaves through the MLflow run tags the [MLflow integration](../how-to/use-mlflow.md) writes, and only an experiment name activates that integration.

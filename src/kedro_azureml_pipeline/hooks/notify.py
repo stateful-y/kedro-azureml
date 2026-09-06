@@ -1,4 +1,4 @@
-"""Hook that posts a job's run events to a webhook, once per job.
+"""Hook that posts a job's run events to a webhook or the Slack API, once per job.
 
 Every Kedro node runs as its own Azure ML step, so Kedro's pipeline hooks fire
 once per node. The generator therefore stamps each step with the job's
@@ -10,6 +10,12 @@ failure summary for a sibling that died without reporting.
 
 The hook is inert unless ``KEDRO_AZUREML_NOTIFY`` is present, which only the
 generator sets, so a local ``kedro run`` never posts.
+
+With the Slack API transport the ``start`` message opens a thread: its
+timestamp is written as a tag on the job's root MLflow run, and the outcome
+messages of the same run reply in that thread while also being sent to the
+channel. Messages posted through the API carry the app's own name and icon
+and no "Added by" label, which a webhook attachment always shows.
 """
 
 from __future__ import annotations
@@ -43,6 +49,8 @@ TERMINAL_RUN_STATUSES = frozenset({"FINISHED", "FAILED", "KILLED"})
 ROOT_RUN_TAG = "mlflow.rootRunId"
 NODE_NAME_TAG = "kedro.node_name"
 ERROR_TAG = "kedro.error"
+THREAD_TAG = "kedro.notify_thread"
+SLACK_POST_MESSAGE_URL = "https://slack.com/api/chat.postMessage"
 _IDENTIFIER_VARS = (
     "AZUREML_RUN_ID",
     "AZUREML_ROOT_RUN_ID",
@@ -211,8 +219,8 @@ class NotificationHook:
        MLflow, then posts ``success``, a failure summary for a sibling that died
        without reporting, or ``unknown`` when the wait cap expires.
 
-    Posting never raises: any error is logged at WARNING and swallowed, and the
-    webhook URL is never logged.
+    Posting never raises: any error is logged at WARNING and swallowed, and
+    neither the webhook URL nor the bot token is ever logged.
 
     See Also
     --------
@@ -399,46 +407,162 @@ class NotificationHook:
         )
 
     def _post(self, definition: dict[str, Any], event: NotificationEvent) -> None:
-        """Render *event* and send it to the webhook, swallowing every error.
+        """Render *event* and send it through the configured transport, swallowing every error.
+
+        The Slack API is used when the definition names ``token_env`` and the
+        token is present in the step; otherwise the webhook when its URL is
+        present; otherwise nothing is posted and a warning names the variable.
 
         Parameters
         ----------
         definition : dict of str to Any
-            The stamped definition naming the webhook variable and the builder.
+            The stamped definition naming the transport variables and the builder.
         event : NotificationEvent
             The event to send.
         """
-        url = os.environ.get(definition["webhook_env"])
+        token_env = definition.get("token_env")
+        token = os.environ.get(token_env) if token_env else None
+        if token:
+            self._post_api(definition, event, token)
+            return
+        webhook_env = definition.get("webhook_env")
+        url = os.environ.get(webhook_env) if webhook_env else None
         if not url:
             logger.warning(
                 "kedro-azureml-pipeline: %s is unset; not posting the '%s' notification",
-                definition["webhook_env"],
+                webhook_env or token_env,
                 event.event,
             )
             return
         if not url.startswith(("https://", "http://")):
             logger.warning(
                 "kedro-azureml-pipeline: %s is not an http(s) URL; not posting the '%s' notification",
-                definition["webhook_env"],
+                webhook_env,
                 event.event,
             )
             return
         payload = self._render(definition.get("payload"), event)
+        if self._send(url, dict(payload), {}, event) is not None:
+            logger.info("kedro-azureml-pipeline: posted the '%s' notification for job %s", event.event, event.job_name)
+
+    def _post_api(self, definition: dict[str, Any], event: NotificationEvent, token: str) -> None:
+        """Post *event* with ``chat.postMessage``, threading outcomes under the run's ``start``.
+
+        Parameters
+        ----------
+        definition : dict of str to Any
+            The stamped definition naming the channel and the builder.
+        event : NotificationEvent
+            The event to send.
+        token : str
+            The bot token; sent as a bearer header and never logged.
+        """
+        body = {"channel": definition["channel"], **self._render(definition.get("payload"), event)}
+        if event.event != "start":
+            thread_ts = self._thread_ts(event.root_run_id)
+            if thread_ts:
+                body["thread_ts"] = thread_ts
+                body["reply_broadcast"] = True
+        response = self._send(SLACK_POST_MESSAGE_URL, body, {"Authorization": f"Bearer {token}"}, event)
+        if response is None:
+            return
+        if not response.get("ok"):
+            logger.warning(
+                "kedro-azureml-pipeline: Slack refused the '%s' notification: %s", event.event, response.get("error")
+            )
+            return
+        logger.info("kedro-azureml-pipeline: posted the '%s' notification for job %s", event.event, event.job_name)
+        if event.event == "start" and response.get("ts"):
+            self._record_thread(event.root_run_id, str(response["ts"]))
+
+    @staticmethod
+    def _send(
+        url: str, body: dict[str, Any], headers: dict[str, str], event: NotificationEvent
+    ) -> dict[str, Any] | None:
+        """POST *body* as JSON and return the decoded JSON response, or ``None`` on any error.
+
+        A response that is not a JSON object (a webhook answers ``ok`` in plain
+        text) decodes to an empty mapping, which still counts as delivered.
+
+        Parameters
+        ----------
+        url : str
+            Where to post.
+        body : dict of str to Any
+            The request body.
+        headers : dict of str to str
+            Extra request headers, such as the bearer token.
+        event : NotificationEvent
+            The event, for the warning.
+
+        Returns
+        -------
+        dict of str to Any or None
+            The decoded response, or ``None`` when the request failed.
+        """
         request = urllib.request.Request(  # noqa: S310
             url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json; charset=utf-8", **headers},
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=POST_TIMEOUT_SECONDS):  # noqa: S310
-                pass
+            with urllib.request.urlopen(request, timeout=POST_TIMEOUT_SECONDS) as response:  # noqa: S310
+                raw = response.read()
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "kedro-azureml-pipeline: posting the '%s' notification failed: %s", event.event, type(exc).__name__
             )
+            return None
+        try:
+            decoded = json.loads(raw)
+        except (TypeError, ValueError):
+            return {}
+        return decoded if isinstance(decoded, dict) else {}
+
+    @staticmethod
+    def _thread_ts(root_run_id: str | None) -> str | None:
+        """Read the thread timestamp the announcer tagged the root run with.
+
+        Parameters
+        ----------
+        root_run_id : str or None
+            The job's root run id.
+
+        Returns
+        -------
+        str or None
+            The ``start`` message timestamp, or ``None`` when absent or unreadable.
+        """
+        if not root_run_id:
+            return None
+        try:
+            import mlflow
+
+            return mlflow.MlflowClient().get_run(root_run_id).data.tags.get(THREAD_TAG) or None
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("kedro-azureml-pipeline: could not read the notification thread: %s", type(exc).__name__)
+            return None
+
+    @staticmethod
+    def _record_thread(root_run_id: str | None, thread_ts: str) -> None:
+        """Tag the root run with the ``start`` message timestamp for the outcome steps.
+
+        Parameters
+        ----------
+        root_run_id : str or None
+            The job's root run id; nothing is recorded without one.
+        thread_ts : str
+            The timestamp Slack returned for the ``start`` message.
+        """
+        if not root_run_id:
             return
-        logger.info("kedro-azureml-pipeline: posted the '%s' notification for job %s", event.event, event.job_name)
+        try:
+            import mlflow
+
+            mlflow.MlflowClient().set_tag(root_run_id, THREAD_TAG, thread_ts)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("kedro-azureml-pipeline: could not record the notification thread: %s", type(exc).__name__)
 
     @staticmethod
     def _render(builder_ref: str | None, event: NotificationEvent) -> Mapping[str, Any]:

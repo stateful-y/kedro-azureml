@@ -98,15 +98,37 @@ notifications:
 
 The builder runs inside the outcome step, which sees only its own node's outputs. Anything from other steps (metrics, registered model versions) has to come from MLflow: search the runs under `event.root_run_id` by their `kedro.node_name` tag. A builder that raises or returns something other than a mapping is logged at WARNING and the default payload is posted instead, so a formatting bug degrades the message rather than losing it.
 
+## Post through the Slack API
+
+A webhook has two limits. Slack labels every attachment it posts with "Added by *app*", and it returns no message timestamp, so the outcome messages cannot reply to the `start` message. Posting through the Slack API removes both: messages carry the app's own name and icon, and the `success` or `failure` of a run lands in a thread under its `start` message and is also sent to the channel, the way the GitHub app reports on a pull request.
+
+1. In the Slack app that owns the channel, add the `chat:write` bot scope, install the app, and copy the bot user token (it starts with `xoxb-`). Store it the same way as the webhook URL, so that it reaches the step as an environment variable.
+2. Invite the app to the channel and copy the channel ID from the channel details (it starts with `C`). The ID is not a secret and goes in `azureml.yml`.
+3. Name both in the definition:
+
+```yaml
+notifications:
+  alerts:
+    token_env: SLACK_BOT_TOKEN
+    channel: C0123456789
+    webhook_env: SLACK_WEBHOOK_URL
+    events: [start, success, failure]
+    payload: my_project.notifications:build_payload
+```
+
+`webhook_env` may stay as a fallback: a step whose environment lacks the token posts through the webhook instead. The payload builder is unchanged. The plugin adds the `channel`, and for an outcome the `thread_ts` and `reply_broadcast` fields, to whatever the builder returns, so a payload of `text`, `blocks`, and `attachments` posts the same either way.
+
+The thread works through MLflow. The announcer step tags the job's root run with the timestamp Slack returned for `start` (tag `kedro.notify_thread`), and the step that posts an outcome reads it back. A job without the `mlflow` extra, or one whose definition leaves out `start`, posts its outcomes as plain channel messages.
+
 ## Requirements and limits
 
-- Posting uses the standard library with a 10 second timeout. Any error is logged at WARNING and swallowed; a webhook outage never fails a step. The URL is never logged.
+- Posting uses the standard library with a 10 second timeout. Any error is logged at WARNING and swallowed; a webhook or Slack outage never fails a step. Neither the URL nor the token is ever logged. A reply Slack refuses (for example `not_in_channel` before the app is invited) is logged with Slack's error code.
 - `wait_timeout` must be below the job's `limits.timeout`; configuration loading rejects anything else.
 - A job that enables `success` on a pipeline with more than one leaf must declare `experiment_name` and run with the `mlflow` extra installed, so the outcome step can find its sibling runs. Compilation rejects a multi-leaf job without an experiment name.
 
 ## See also
 
-- [Configuration reference](../reference/configuration.md#notifications) for every `notifications` field
+- [Configuration reference](../reference/configuration.md#notifications) for every `notifications` field, including the Slack API pair
 - [Hook lifecycle](../explanation/hook-lifecycle.md#how-run-notifications-work-remotely) for why one step per node forces the announcer and poster roles
 - [Schedule pipelines](schedule-pipelines.md) for the runs the scheduler triggers
 - [Deploy from CI/CD](deploy-from-cicd.md#use-a-callback-for-notifications) for the submission-time callback this complements
