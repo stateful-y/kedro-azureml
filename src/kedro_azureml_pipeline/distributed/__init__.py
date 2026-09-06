@@ -2,7 +2,7 @@
 
 from .config import DistributedNodeConfig, Framework
 from .decorators import distributed_job
-from .utils import is_distributed_environment, is_distributed_master_node
+from .utils import is_distributed_environment, is_distributed_master_node, mpi_rank
 
 __all__ = [
     "DistributedNodeConfig",
@@ -10,4 +10,5 @@ __all__ = [
     "distributed_job",
     "is_distributed_environment",
     "is_distributed_master_node",
+    "mpi_rank",
 ]

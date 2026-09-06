@@ -9,7 +9,7 @@ from kedro.pipeline import node, pipeline
 from kedro_azureml_pipeline.constants import DISTRIBUTED_CONFIG_FIELD
 from kedro_azureml_pipeline.distributed import distributed_job
 from kedro_azureml_pipeline.distributed.config import Framework
-from kedro_azureml_pipeline.distributed.utils import is_distributed_master_node
+from kedro_azureml_pipeline.distributed.utils import is_distributed_master_node, mpi_rank
 from kedro_azureml_pipeline.generator import AzureMLPipelineGenerator
 from tests.utils import identity
 
@@ -166,3 +166,39 @@ class TestMasterNodeDetection:
         clean_env = {k: v for k, v in os.environ.items() if k not in ("RANK", "OMPI_COMM_WORLD_RANK", "TF_CONFIG")}
         with patch.dict(os.environ, clean_env, clear=True):
             assert is_distributed_master_node() is True
+
+
+def _without_rank_vars() -> dict[str, str]:
+    return {k: v for k, v in os.environ.items() if k not in ("RANK", "OMPI_COMM_WORLD_RANK", "TF_CONFIG")}
+
+
+class TestMpiRank:
+    """Tests for ``mpi_rank`` rank parsing."""
+
+    @pytest.mark.parametrize(
+        ("environment", "expected"),
+        [
+            ({"OMPI_COMM_WORLD_RANK": "3"}, 3),
+            ({"RANK": "2"}, 2),
+            # Open MPI's variable is inspected first.
+            ({"OMPI_COMM_WORLD_RANK": "1", "RANK": "5"}, 1),
+            # An unparseable variable falls through to the next one.
+            ({"OMPI_COMM_WORLD_RANK": "not-a-number", "RANK": "2"}, 2),
+            ({"OMPI_COMM_WORLD_RANK": "not-a-number"}, 0),
+        ],
+    )
+    def test_reads_the_first_parseable_variable(self, environment, expected):
+        """The rank comes from the first variable that holds an integer, else 0."""
+        with patch.dict(os.environ, {**_without_rank_vars(), **environment}, clear=True):
+            assert mpi_rank() == expected
+
+    def test_is_zero_without_distributed_env(self):
+        """A single-instance run reads as rank 0."""
+        with patch.dict(os.environ, _without_rank_vars(), clear=True):
+            assert mpi_rank() == 0
+
+    @pytest.mark.parametrize("rank", ["0", "3"])
+    def test_master_node_agrees_with_the_rank(self, rank):
+        """Both helpers read the same variables, so master means rank 0."""
+        with patch.dict(os.environ, {**_without_rank_vars(), "OMPI_COMM_WORLD_RANK": rank}, clear=True):
+            assert is_distributed_master_node() is (mpi_rank() == 0)

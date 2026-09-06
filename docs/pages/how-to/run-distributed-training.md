@@ -85,6 +85,16 @@ During local runs, `@distributed_job` has no effect and the function runs normal
         mlflow.log_artifact("model.pkl")
     ```
 
+!!! tip "Reading the rank itself"
+
+    [`mpi_rank()`][kedro_azureml_pipeline.distributed.mpi_rank] returns the process's 0-based rank (0 outside a distributed run), for anything that must differ per rank, such as a seed offset or a log-line marker:
+
+    ```python
+    from kedro_azureml_pipeline.distributed import mpi_rank
+
+    sampler_seed = base_seed + mpi_rank()
+    ```
+
 !!! note
 
     If your compute cluster has fewer nodes than `num_nodes`, Azure ML queues the job until enough nodes become available. The job will not fail immediately, but it may wait indefinitely if the cluster's maximum node count is lower than the requested count.
